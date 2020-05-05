@@ -584,8 +584,8 @@ nav ul li {
     padding-left: 20px;
 }
 .main_about_area .single_about_right_img{
-    border: 10px solid #fff;
-    padding: 20px 0px 20px 20px;
+    
+    padding: 20px 20px 20px 20px;
     margin-right: -20%;
 }
 .single_abt.single_about p.text-uppercase{

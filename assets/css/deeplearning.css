@@ -1,0 +1,96 @@
+/* navigation bar */
+.navbar {
+    padding-top: 5px;
+    padding-bottom: 5px;
+    border: 0;
+    border-radius: 0;
+    margin-bottom: 0;
+    font-size: 15px;
+    font-weight: semibold;
+    color: #ffffff;
+    background-color: #070707;
+}
+
+.container-fluid {
+    padding-top: 70px;
+    padding-bottom: 70px;
+}
+
+.navbar-nav li a:hover {
+    color: #FF5722 !important;
+
+}
+
+.bg-1 {
+    background-color: #070707; /* com black  */
+    color: #ffffff;
+    padding-left: 150px;
+    padding-right: 150px;
+    
+
+}
+.bg-2 {
+    background-color:#212121; /* Dark Blue */
+    color: #ffffff;
+
+}
+.bg-3 {
+    background-color: #ffffff; /* White */
+    color: #555555;
+}
+
+
+h1 {
+    font-size: 4.5rem;
+    line-height: 3.5rem;
+    
+    font-weight: bold;
+
+}
+h2 {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+}
+h3 {
+    font-size: 1.875rem;
+    line-height: 2.5rem;
+    margin-bottom: 30px;
+
+}
+h4 {
+    font-size: 1.125rem;
+    line-height: 2rem;
+}
+
+
+.forestfire {
+    transform:rotate(350deg);
+}
+
+.forestfirepara{
+    text-align: left ;
+    font-size: small;
+    font-family: 'Lucida Sans';
+    font-weight: lighter;
+    color: #757575;
+    
+}
+.btn-fire{
+    color: white;
+    padding: 10px 20px;
+    border: 4 #FF5722;
+    background-color: #FF5722;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    box-shadow: 0 5px 0 0 #f3f6f7;
+}
+
+.SDV{
+    text-align : center;
+    font-size: small;
+    font-family: 'Lucida Sans';
+    font-weight: lighter;
+    
+
+}

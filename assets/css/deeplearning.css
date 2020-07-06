@@ -6,7 +6,7 @@
     border-radius: 0;
     margin-bottom: 0;
     font-size: 15px;
-    font-weight: bold;
+    font-weight: semibold;
     color: #ffffff;
     background-color: #070707;
 }
@@ -26,7 +26,7 @@
     color: #ffffff;
     padding-left: 150px;
     padding-right: 150px;
-    text-align: left
+    
 
 }
 .bg-2 {
@@ -63,3 +63,13 @@ h4 {
 }
 
 
+.forestfire {
+    transform:rotate(350deg);
+}
+
+.forestfirepara{
+    text-align: left ;
+    font-size: small;
+    font-family: 'Lucida Sans';
+    font-weight: lighter;
+}

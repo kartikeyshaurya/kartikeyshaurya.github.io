@@ -1,320 +1,613 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Kartikey Shaurya — Machine Learning Engineer</title>
+  <meta name="description" content="Machine Learning Engineer in Chandigarh, India. LLM agents, recommenders and data pipelines shipped to production for a state government, legal-tech, logistics and ed-tech.">
+  <meta name="author" content="Kartikey Shaurya">
+  <link rel="canonical" href="https://kartikeyshaurya.github.io/">
+  <meta property="og:type" content="profile">
+  <meta property="og:title" content="Kartikey Shaurya — Machine Learning Engineer">
+  <meta property="og:description" content="Production AI, reported from the inside: voice agents, multi-agent platforms, recommenders and a 160 GB data lake.">
+  <meta property="og:url" content="https://kartikeyshaurya.github.io/">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-        <meta name="description" content="">
-        <meta name="author" content="">
-        <link href="https://fonts.googleapis.com/css?family=Poppins:100,200,300,400,500,600,700,800,900&display=swap" rel="stylesheet">
-    
-        <title>Kartikey Shaurya</title>
-    
-        <link rel="stylesheet" href="css/bootstrap.min.css">
-        <link rel="stylesheet" href="css/unicons.css">
-        <link rel="stylesheet" href="css/owl.carousel.min.css">
-        <link rel="stylesheet" href="css/owl.theme.default.min.css">
-    
-        <!-- MAIN STYLE -->
-        <link rel="stylesheet" href="css/tooplate-style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/site.css">
 
-        <!--Additional Css-->
-
-        
-    <!-- Additional CSS Files -->
-    <link rel="stylesheet" type="text/css" href="assets/css/bootstrap.min.css">
-
-    <link rel="stylesheet" type="text/css" href="assets/css/font-awesome.css">
-
-    <link rel="stylesheet" href="assets/css/templatemo-lava.css">
-
-    <link rel="stylesheet" href="assets/css/owl-carousel.css">
-    </head>
-
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Kartikey Shaurya",
+    "jobTitle": "Machine Learning Engineer",
+    "email": "mailto:kartikeyshaurya@gmail.com",
+    "url": "https://kartikeyshaurya.github.io/",
+    "worksFor": { "@type": "Organization", "name": "Creed Infotech" },
+    "alumniOf": { "@type": "CollegeOrUniversity", "name": "Lovely Professional University" },
+    "address": { "@type": "PostalAddress", "addressLocality": "Chandigarh", "addressCountry": "IN" },
+    "sameAs": ["https://github.com/kartikeyshaurya", "https://www.linkedin.com/in/kartikey-shaurya-3bb776109/"],
+    "knowsAbout": ["Machine Learning", "Large Language Models", "NLP", "Recommender Systems", "MLOps", "Elasticsearch", "LangGraph", "PyTorch"]
+  }
+  </script>
+</head>
 <body>
-       <! -- Adding the Menu --->  
+<a class="skip" href="#main">Skip to content</a>
 
-    <nav class="navbar navbar-expand-sm navbar-light">
-        <div class="container">
-            <a class="navbar-brand" href="index.html"><i class='uil uil-user'></i> Kartikey Shaurya</a>
+<!-- Illustration sprite: flat editorial graphics, one per story. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="ill-voice" viewBox="0 0 600 400">
+      <rect width="600" height="400" fill="#faedda"/>
+      <line x1="40" y1="200" x2="560" y2="200" stroke="#1c1a17" stroke-width="1"/>
+      <g fill="#a51c30">
+        <rect x="60" y="180" width="8" height="40"/><rect x="78" y="165" width="8" height="70"/><rect x="96" y="150" width="8" height="100"/>
+        <rect x="114" y="120" width="8" height="160"/><rect x="132" y="90" width="8" height="220"/><rect x="150" y="140" width="8" height="120"/>
+        <rect x="168" y="175" width="8" height="50"/><rect x="186" y="155" width="8" height="90"/><rect x="204" y="100" width="8" height="200"/>
+        <rect x="222" y="70" width="8" height="260"/><rect x="240" y="130" width="8" height="140"/><rect x="258" y="185" width="8" height="30"/>
+        <rect x="276" y="160" width="8" height="80"/><rect x="294" y="110" width="8" height="180"/><rect x="312" y="60" width="8" height="280"/>
+        <rect x="330" y="95" width="8" height="210"/><rect x="348" y="150" width="8" height="100"/><rect x="366" y="180" width="8" height="40"/>
+        <rect x="384" y="135" width="8" height="130"/><rect x="402" y="105" width="8" height="190"/><rect x="420" y="145" width="8" height="110"/>
+        <rect x="438" y="170" width="8" height="60"/><rect x="456" y="188" width="8" height="24"/><rect x="474" y="160" width="8" height="80"/>
+        <rect x="492" y="178" width="8" height="44"/><rect x="510" y="190" width="8" height="20"/><rect x="528" y="194" width="8" height="12"/>
+      </g>
+      <circle cx="312" cy="200" r="7" fill="#1c1a17"/>
+    </symbol>
 
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false"
-                aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-                <span class="navbar-toggler-icon"></span>
-                <span class="navbar-toggler-icon"></span>
-            </button>
+    <symbol id="ill-agents" viewBox="0 0 600 400">
+      <rect width="600" height="400" fill="#faedda"/>
+      <g stroke="#1c1a17" stroke-width="1.5" fill="none">
+        <path d="M120 300 L250 120 L420 160 L480 300 Z"/><path d="M250 120 L300 260 L480 300"/><path d="M120 300 L300 260 L420 160"/><path d="M300 260 L390 340"/><path d="M250 120 L120 300"/>
+      </g>
+      <g fill="#a51c30"><circle cx="120" cy="300" r="18"/><circle cx="250" cy="120" r="24"/><circle cx="420" cy="160" r="18"/><circle cx="480" cy="300" r="22"/><circle cx="390" cy="340" r="12"/></g>
+      <circle cx="300" cy="260" r="30" fill="#1c1a17"/>
+      <circle cx="300" cy="260" r="10" fill="#faedda"/>
+    </symbol>
 
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav mx-auto">
-                    <li class="nav-item">
-                        <a href="#about" class="nav-link"><span data-hover="About">About</span></a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#project" class="nav-link"><span data-hover="Projects">Projects</span></a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#resume" class="nav-link"><span data-hover="Resume">Resume</span></a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#contact" class="nav-link"><span data-hover="Contact">Contact</span></a>
-                    </li>
-                </ul>
+    <symbol id="ill-lake" viewBox="0 0 600 400">
+      <rect width="600" height="400" fill="#faedda"/>
+      <g fill="none" stroke="#1c1a17" stroke-width="1.5">
+        <rect x="80" y="270" width="440" height="60"/><rect x="110" y="190" width="380" height="60"/><rect x="140" y="110" width="320" height="60"/>
+      </g>
+      <g fill="#a51c30">
+        <rect x="96" y="286" width="28" height="28"/><rect x="134" y="286" width="28" height="28"/><rect x="172" y="286" width="28" height="28"/><rect x="210" y="286" width="28" height="28"/><rect x="248" y="286" width="28" height="28"/><rect x="286" y="286" width="28" height="28"/><rect x="324" y="286" width="28" height="28"/><rect x="362" y="286" width="28" height="28"/>
+        <rect x="126" y="206" width="28" height="28"/><rect x="164" y="206" width="28" height="28"/><rect x="202" y="206" width="28" height="28"/><rect x="240" y="206" width="28" height="28"/>
+        <rect x="156" y="126" width="28" height="28"/>
+      </g>
+      <g fill="#eed6aa"><rect x="400" y="286" width="28" height="28"/><rect x="438" y="286" width="28" height="28"/><rect x="278" y="206" width="28" height="28"/><rect x="316" y="206" width="28" height="28"/><rect x="354" y="206" width="28" height="28"/><rect x="194" y="126" width="28" height="28"/><rect x="232" y="126" width="28" height="28"/></g>
+      <path d="M300 40 v50 M292 82 l8 8 8-8" stroke="#1c1a17" stroke-width="1.5" fill="none"/>
+    </symbol>
 
-                <ul class="navbar-nav ml-lg-auto">
-                    <div class="ml-lg-4">
-                      <div class="color-mode d-lg-flex justify-content-center align-items-center">
-                        <i class="color-mode-icon"></i>
-                        Color mode
-                      </div>
-                    </div>
-                </ul>
-            </div>
-        </div>
-    </nav> 
+    <symbol id="ill-redact" viewBox="0 0 600 400">
+      <rect width="600" height="400" fill="#faedda"/>
+      <g fill="#b9b8ad">
+        <rect x="60" y="80" width="200" height="10"/><rect x="270" y="80" width="90" height="10"/>
+        <rect x="60" y="110" width="120" height="10"/><rect x="260" y="110" width="180" height="10"/>
+        <rect x="60" y="140" width="300" height="10"/>
+        <rect x="60" y="170" width="80" height="10"/><rect x="250" y="170" width="140" height="10"/>
+        <rect x="60" y="200" width="240" height="10"/><rect x="310" y="200" width="60" height="10"/>
+        <rect x="60" y="230" width="160" height="10"/>
+      </g>
+      <g fill="#1c1a17"><rect x="190" y="106" width="60" height="18"/><rect x="150" y="166" width="90" height="18"/><rect x="230" y="226" width="140" height="18"/></g>
+      <circle cx="480" cy="150" r="60" fill="none" stroke="#1c1a17" stroke-width="1.5"/>
+      <g fill="#a51c30"><rect x="450" y="125" width="20" height="20"/><rect x="470" y="125" width="20" height="20"/><rect x="490" y="125" width="20" height="20"/><rect x="460" y="145" width="20" height="20"/><rect x="480" y="145" width="20" height="20"/><rect x="500" y="145" width="20" height="20"/><rect x="470" y="165" width="20" height="20"/><rect x="490" y="165" width="20" height="20"/></g>
+      <rect x="60" y="290" width="480" height="50" fill="none" stroke="#a51c30" stroke-width="1.5"/>
+      <rect x="60" y="290" width="330" height="50" fill="#a51c30"/>
+    </symbol>
 
-    <!-- ABOUT -->
-    <section class="about full-screen d-lg-flex justify-content-center align-items-center" id="about">
-        <div class="container">
-            <div class="row">
-                
-                <div class="col-lg-7 col-md-12 col-12 d-flex align-items-center">
-                    <div class="about-text">
-                        <small class="small-text">Welcome to <span class="mobile-block">my portfolio website!</span></small>
-                        <h1 class="animated animated-text">
-                            <span class="mr-2">Hey folks, I'm</span>
-                                <div class="animated-info">
-                                    <span class="animated-item">Kartikey</span>
-                                    <span class="animated-item">ML Engineer</span>
-                                    <span class="animated-item">Data Analyst</span>
-                        
-                                </div>
-                        </h1>
+    <symbol id="ill-map" viewBox="0 0 600 400">
+      <rect width="600" height="400" fill="#faedda"/>
+      <g stroke="#eed6aa" stroke-width="1"><path d="M0 100 H600 M0 200 H600 M0 300 H600 M100 0 V400 M200 0 V400 M300 0 V400 M400 0 V400 M500 0 V400"/></g>
+      <g fill="#1c1a17"><circle cx="80" cy="60" r="3"/><circle cx="140" cy="130" r="3"/><circle cx="210" cy="70" r="3"/><circle cx="330" cy="40" r="3"/><circle cx="420" cy="90" r="3"/><circle cx="520" cy="60" r="3"/><circle cx="90" cy="250" r="3"/><circle cx="160" cy="330" r="3"/><circle cx="300" cy="350" r="3"/><circle cx="470" cy="330" r="3"/><circle cx="540" cy="250" r="3"/><circle cx="380" cy="250" r="3"/><circle cx="250" cy="180" r="3"/><circle cx="60" cy="170" r="3"/></g>
+      <g fill="#a51c30" opacity=".9"><circle cx="230" cy="250" r="34"/><circle cx="440" cy="170" r="26"/><circle cx="130" cy="110" r="18"/></g>
+      <g fill="none" stroke="#a51c30" stroke-width="1.5"><circle cx="230" cy="250" r="52"/><circle cx="440" cy="170" r="42"/><circle cx="130" cy="110" r="30"/></g>
+    </symbol>
 
-                        <p>Solving a Problem is a challenge. But I am highly energetic in Machine Learning , Deep Learning and A.I .I could help you to tackle your Problems</p>
-                        
-                        <div class="custom-btn-group mt-4">
-                          <a href= "resume.png"  download  class="btn mr-lg-2 custom-btn"><i class='uil uil-file-alt'></i> Download Resume</a>
-                          <a href="#contact" class="btn custom-btn custom-btn-bg custom-btn-link">Get a free quote</a>
-                        </div>
-                    </div>
-                </div>
+    <symbol id="ill-clusters" viewBox="0 0 600 400">
+      <rect width="600" height="400" fill="#faedda"/>
+      <g fill="#1c1a17"><circle cx="120" cy="120" r="5"/><circle cx="150" cy="95" r="5"/><circle cx="170" cy="140" r="5"/><circle cx="110" cy="160" r="5"/><circle cx="190" cy="105" r="5"/><circle cx="140" cy="175" r="5"/></g>
+      <g fill="#a51c30"><circle cx="320" cy="230" r="5"/><circle cx="350" cy="260" r="5"/><circle cx="300" cy="280" r="5"/><circle cx="370" cy="220" r="5"/><circle cx="335" cy="300" r="5"/><circle cx="290" cy="240" r="5"/><circle cx="390" cy="270" r="5"/></g>
+      <g fill="#726a5b"><circle cx="480" cy="100" r="5"/><circle cx="510" cy="130" r="5"/><circle cx="460" cy="150" r="5"/><circle cx="530" cy="90" r="5"/><circle cx="500" cy="170" r="5"/></g>
+      <g fill="none" stroke-width="1.5" stroke-dasharray="6 5"><ellipse cx="150" cy="135" rx="70" ry="60" stroke="#1c1a17"/><ellipse cx="340" cy="260" rx="80" ry="65" stroke="#a51c30"/><ellipse cx="495" cy="130" rx="60" ry="60" stroke="#726a5b"/></g>
+      <path d="M60 340 L540 340 M60 340 L60 60" stroke="#1c1a17" stroke-width="1.5" fill="none"/>
+    </symbol>
 
-                <div class="col-lg-5 col-md-12 col-12">
-                    <div class="about-image svg">
-                        <img src="images/main.svg" class="img-fluid" alt="svg image">
-                    </div>
-                </div>
+    <symbol id="ill-chat" viewBox="0 0 600 400">
+      <rect width="600" height="400" fill="#faedda"/>
+      <path d="M80 90 h280 a16 16 0 0 1 16 16 v70 a16 16 0 0 1 -16 16 h-200 l-40 36 v-36 h-40 a16 16 0 0 1 -16 -16 v-70 a16 16 0 0 1 16 -16z" fill="none" stroke="#1c1a17" stroke-width="1.5"/>
+      <g fill="#b9b8ad"><rect x="104" y="118" width="200" height="8"/><rect x="104" y="140" width="140" height="8"/><rect x="104" y="162" width="180" height="8"/></g>
+      <path d="M520 220 h-280 a16 16 0 0 0 -16 16 v70 a16 16 0 0 0 16 16 h200 l40 36 v-36 h40 a16 16 0 0 0 16 -16 v-70 a16 16 0 0 0 -16 -16z" fill="#a51c30"/>
+      <g fill="#faedda"><rect x="250" y="248" width="220" height="8"/><rect x="250" y="270" width="160" height="8"/><rect x="250" y="292" width="200" height="8"/></g>
+    </symbol>
 
-            </div>
-        </div>
-    </section>
+    <symbol id="ill-jobs" viewBox="0 0 600 400">
+      <rect width="600" height="400" fill="#faedda"/>
+      <g stroke="#eed6aa" stroke-width="1.5"><path d="M60 110 H540 M60 180 H540 M60 250 H540 M60 320 H540"/></g>
+      <g fill="#b9b8ad"><rect x="110" y="70" width="240" height="10"/><rect x="110" y="140" width="180" height="10"/><rect x="110" y="210" width="260" height="10"/><rect x="110" y="280" width="200" height="10"/></g>
+      <g fill="none" stroke="#a51c30" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M66 76 l10 10 18 -20"/><path d="M66 216 l10 10 18 -20"/><path d="M66 286 l10 10 18 -20"/></g>
+      <rect x="64" y="134" width="24" height="24" fill="none" stroke="#1c1a17" stroke-width="1.5"/>
+      <g fill="#a51c30"><rect x="420" y="66" width="120" height="18"/><rect x="440" y="206" width="100" height="18"/><rect x="400" y="276" width="140" height="18"/></g>
+    </symbol>
 
-    <!--------------------------->
+    <symbol id="ill-portrait" viewBox="0 0 400 500">
+      <rect width="400" height="500" fill="#faedda"/>
+      <circle cx="200" cy="190" r="90" fill="none" stroke="#1c1a17" stroke-width="1.5"/>
+      <path d="M60 470 a140 140 0 0 1 280 0" fill="none" stroke="#1c1a17" stroke-width="1.5"/>
+      <text x="200" y="222" text-anchor="middle" font-family="Newsreader, Georgia, serif" font-size="96" fill="#a51c30">K</text>
+    </symbol>
+  </defs>
+</svg>
 
-    <!------------------PROJET SECTIONS--------------------------->
-    <section class="project py-5" id="project">
-        <div class="container">
-                
-                <div class="row">
-                  <div class="col-lg-11 text-center mx-auto col-12">
-
-                      <div class="col-lg-8 mx-auto">
-                        <h2>Things I have designed for Industry or as a Hooby</h2>
-                      </div>
-
-                      <div class="owl-carousel owl-theme">
-                        <div class="item">
-                          <div class="project-info">
-                            
-                            <a href = "https://github.com/kartikeyshaurya/SDV"><img src="images/sdv.png" class="img-fluid" alt="project image"></a>
-                          </div>
-                        </div>
-
-                        <div class="item">
-                          <div class="project-info">
-                            <a href="https://github.com/kartikeyshaurya/Disaster_management_sysytem"><img src="images/dm.png" class="img-fluid" alt="project image"></a>
-                            
-                          </div>
-                        </div>
-
-                        <div class="item">
-                          <div class="project-info">
-                            <a href="https://github.com/kartikeyshaurya/Disaster_management_sysytem"><img src="images/prediction.png" class="img-fluid" alt="project image"></a>
-                            
-                          </div>
-                        </div>
-
-                        <div class="item">
-                          <div class="project-info">
-                            <a href="https://github.com/kartikeyshaurya/Disaster_management_sysytem"><img src="images/FirePrediction.png" class="img-fluid" alt="project image"></a>
-                            
-                          </div>
-                        </div>
-
-                        <div class="item">
-                          <div class="project-info">
-                            <a href="https://github.com/kartikeyshaurya/DistroBot"><img src="images/FirePrediction.png" class="img-fluid" alt="project image"></a>
-                          </div>
-                        </div>
-                      </div>
-
-                  </div>
-                </div>
-        </div>
-    </section>
-
-    <! ----------- ---------------------------->
- <!-- FEATURES -->
- <section class="resume py-5 d-lg-flex justify-content-center align-items-center" id="resume">
-    <div class="container">
-        <div class="row">
-
-            <div class="col-lg-6 col-12">
-              <h2 class="mb-4">Experiences</h2>
-
-                <div class="timeline">
-                    <div class="timeline-wrapper">
-                         <div class="timeline-yr">
-                              <span>2020</span>
-                         </div>
-                         <div class="timeline-info">
-                              <h3><span>Intern  </span><small>S.S Agriculture and Allied Products</small></h3>
-                              <p> ....</p>
-                         </div>
-                    </div>
-
-                    
-                    
-                    
-                    
-                </div>
-            </div>
-
-            <div class="col-lg-6 col-12">
-              <h2 class="mb-4 mobile-mt-2">Educations</h2>
-
-                <div class="timeline">
-                    <div class="timeline-wrapper">
-                         <div class="timeline-yr">
-                              <span>2020</span>
-                         </div>
-                         <div class="timeline-info">
-                              <h3><span>Deep Learning</span><small>UDACITY</small></h3>
-                              <p>Selected in the Bertsmann Scholarship where i learned and grew in the field of the A.i</p>
-                         </div>
-                    </div>
-
-                    <div class="timeline-wrapper">
-                        <div class="timeline-yr">
-                            <span>2020</span>
-                        </div>
-                        <div class="timeline-info">
-                            <h3><span>Deep Reinforcement Learning Speciazation</span><small>Coursera</small></h3>
-                            <p>Due to Covid and lot of time i got closer to Deep Learning and even got a speciastition degree from Coursera.</p>
-                        </div>
-                    </div>
-                    
-                    <div class="timeline-wrapper">
-                        <div class="timeline-yr">
-                            <span>2019</span>
-                        </div>
-                        <div class="timeline-info">
-                            <h3><span>B.TECH(cse)</span><small>Lovely Professional University</small></h3>
-                            <p>Started my  Graduation in my favourate domain.</p>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-            
-        </div>
-    </div>
-</section>
-<br>
-<br>
-<!--More Project Sections -->
-<div class="col-lg-8 mx-auto">
-  <h2>Here Are Some More Project That i Have Made  </h2>\
-  <br>
-  <br>
-
-</div>
-<!-- ***** Features Big Item Start ***** -->
-<section class="section" id="about">
-  <div class="container">
-      <div class="row">
-          <div class="col-lg-4 col-md-6 col-sm-12 col-xs-12"
-              data-scroll-reveal="enter left move 30px over 0.6s after 0.4s">
-              <div class="features-item">
-                  <div class="features-icon">
-                      
-                      <img src="images/bikesharing.png" width="200" 
-                      height="200">
-                      <h4>Bike Sharing Prediction </h4>
-                      <p>Using Simple Neural Network Architecture we have made why the sales of bike drop or rise in given time frame and based on this data what will happen next </p>
-                      <a href="https://github.com/kartikeyshaurya/Udacity_deep_learning_nanodergree/tree/master/2_Bike_Predictioon_Data" class="main-button">
-                          See Code Here
-                      </a>
-                  </div>
-              </div>
-          </div>
-          <div class="col-lg-4 col-md-6 col-sm-12 col-xs-12"
-              data-scroll-reveal="enter bottom move 30px over 0.6s after 0.4s">
-              <div class="features-item">
-                  <div class="features-icon">
-                      
-                      <img src="images/apple_trends.png" width="200" 
-                      height="200" >
-                      <h4>Stock Analysis
-                      </h4>
-                      <p>Using the Simple RNN i have Analysed the past data of Apple stocks and predicted the upcoming value of the stocks  </p>
-                      <a href="#testimonials" class="main-button">
-                        See Code Here
-                      </a>
-                  </div>
-              </div>
-          </div>
-          <div class="col-lg-4 col-md-6 col-sm-12 col-xs-12"
-              data-scroll-reveal="enter right move 30px over 0.6s after 0.4s">
-              <div class="features-item">
-                  <div class="features-icon">
-                      
-                      <img src="images/sentiment.png" width="200" 
-                      height="200">
-                      <h4>Sentiment Analysis</h4>
-                      <p>This project is also end to end Machine Learning Project.The model is deployed on AWS with 92 percent accuracy  </p>
-                      <a href="https://github.com/kartikeyshaurya/Sentiments_and_deep_Learning/blob/master/SageMaker%20Project%20.ipynb" class="main-button">
-                          See Code Here
-                      </a>
-                  </div>
-              </div>
-          </div>
-      </div>
+<header>
+  <div class="wrap util">
+    <ul>
+      <li id="today">Thursday, October 9, 2026</li>
+      <li>Chandigarh, India</li>
+    </ul>
+    <ul>
+      <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
+      <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a class="pdf" href="Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+    </ul>
   </div>
-</section>
-<!-- ***** Features Big Item End ***** -->
-<!---- Footer Section ------->
-    <footer class="footer py-5">
-        <div class="container">
-             <div class="row">
 
-                  <div class="col-lg-12 col-12">                                
-                      <p class="copyright-text text-center">Copyright &copy; 2020 Kartikey Shaurya . All rights reserved</p>
-               </div>
-                  
-             </div>
+  <div class="wrap masthead">
+    <a class="logo" href="#top">Kartikey Shaurya</a>
+    <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
+  </div>
+
+  <nav class="primary" aria-label="Sections">
+    <ul>
+      <li><a href="#agents">Agents &amp; LLMs</a></li>
+      <li><a href="#search">Search &amp; Recommendation</a></li>
+      <li><a href="#data">Data &amp; Pipelines</a></li>
+      <li><a href="#public">Public Sector</a></li>
+      <li><a href="#experience">Experience</a></li>
+      <li><a href="#about">About</a></li>
+      <li><a class="cta" href="#hire">Hire me</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main">
+
+  <!-- ========== LEAD ========== -->
+  <section class="wrap lead-grid" id="top">
+    <article class="lead hl">
+      <a href="#voice"><figure><svg class="ill" role="img" aria-label="Illustration: a crimson audio waveform"><use href="#ill-voice"/></svg></figure></a>
+      <p class="kicker">Agents &amp; LLMs <span class="fmt">Case study</span></p>
+      <h1><a href="#voice">The agent that answers the phone</a></h1>
+      <p class="dek">Freight runs on calls. At ValueLoads, voice-enabled AI agents now take them, understand what's being asked and finish the job, so dispatch staff handle exceptions instead of every ring.</p>
+      <p class="byline">By <b>Kartikey Shaurya</b> · Creed Infotech, 2025</p>
+    </article>
+
+    <aside class="rail hl" aria-labelledby="latest-h">
+      <h2 id="latest-h">Read the latest</h2>
+      <ul>
+        <li>
+          <a href="#rejara"><svg class="thumb" aria-hidden="true"><use href="#ill-agents"/></svg></a>
+          <div>
+            <h3><a href="#rejara">Agents that collect data and hand work to each other</a></h3>
+            <p>LangGraph agents on the Rejara platform, plus Pegasus and BERT fine-tunes.</p>
+          </div>
+        </li>
+        <li>
+          <a href="#lake"><svg class="thumb" aria-hidden="true"><use href="#ill-lake"/></svg></a>
+          <div>
+            <h3><a href="#lake">A 160 GB data lake stops being the bottleneck</a></h3>
+            <p>Writes 40–50% faster, storage down 20%, after a warehouse rebuild on Airflow.</p>
+          </div>
+        </li>
+        <li>
+          <a href="#anon"><svg class="thumb" aria-hidden="true"><use href="#ill-redact"/></svg></a>
+          <div>
+            <h3><a href="#anon">Third place for an anonymiser that hides names and faces</a></h3>
+            <p>DistilBERT for PII, YuNet for faces, in a West Bengal Government initiative.</p>
+          </div>
+        </li>
+      </ul>
+    </aside>
+  </section>
+
+  <!-- ========== NUMBERS ========== -->
+  <section class="band" aria-labelledby="numbers-h">
+    <div class="wrap">
+      <p class="kicker" id="numbers-h">By the numbers <span class="fmt">From shipped work</span></p>
+      <dl class="stats">
+        <div><dt>160 GB+</dt><dd><b>Data lake re-architected</b> on Airflow at Sapio Analytics.</dd></div>
+        <div><dt>+8–10%</dt><dd><b>Average driver income</b> after performance clustering went live.</dd></div>
+        <div><dt>−15%</dt><dd><b>Driver attrition</b> from the same model.</dd></div>
+        <div><dt>$10,000</dt><dd><b>AWS credits</b> awarded for an LLM job-assistance chatbot.</dd></div>
+        <div><dt>3rd</dt><dd><b>West Bengal Government</b> data-security initiative, Data Anonymizer.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ========== ALL WORK ========== -->
+  <section class="wrap section" aria-labelledby="work-h">
+    <div class="sec-h">
+      <h2 id="work-h">All work</h2>
+      <a href="Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF ↓</a>
+    </div>
+
+    <div class="cols hl">
+      <div class="col" id="agents">
+        <h3>Agents &amp; LLMs</h3>
+        <ul>
+          <li><h4><a href="#voice">The agent that answers the phone</a></h4><p>Voice AI running freight operations at ValueLoads.</p></li>
+          <li><h4><a href="#support">Support that knows when not to answer</a></h4><p>Assistants for an ed-tech and a legal-services firm.</p></li>
+          <li><h4><a href="#rejara">Agents that collect data and hand work to each other</a></h4><p>LangChain and LangGraph on the Rejara platform.</p></li>
+          <li><h4><a href="#samarth">A job coach built from an LLM</a></h4><p>Personalised recommendations for a government skilling platform.</p></li>
+        </ul>
+      </div>
+
+      <div class="col" id="search">
+        <h3>Search &amp; Recommendation</h3>
+        <ul>
+          <li><h4><a href="#rejara">Recommendations straight out of Elasticsearch</a></h4><p>Pipelines that cut manual review time and sharpened insight.</p></li>
+          <li><h4><a href="#samarth">Matching workers to jobs at scale</a></h4><p>Job-matching recommenders for the Samarth platform.</p></li>
+          <li><h4><a href="#rejara">Summaries people trust</a></h4><p>Pegasus fine-tuned for conversation, BERT for topics.</p></li>
+        </ul>
+      </div>
+
+      <div class="col" id="data">
+        <h3>Data &amp; Pipelines</h3>
+        <ul>
+          <li><h4><a href="#lake">A 160 GB data lake stops being the bottleneck</a></h4><p>Neural Ocean: warehouse architecture on Airflow.</p></li>
+          <li><h4><a href="#lake">Finding PII before data leaves the building</a></h4><p>A detection pipeline for compliant internal sharing.</p></li>
+          <li><h4><a href="#samarth">Ingestion and MIS reporting that run themselves</a></h4><p>Pipelines behind the Samarth platform's analytics.</p></li>
+        </ul>
+      </div>
+
+      <div class="col" id="public">
+        <h3>Public Sector</h3>
+        <ul>
+          <li><h4><a href="#assam">Where to send the patrols</a></h4><p>Multi-year law-enforcement analysis for the Government of Assam.</p></li>
+          <li><h4><a href="#anon">Third place for an anonymiser that hides names and faces</a></h4><p>West Bengal Government data-security initiative.</p></li>
+          <li><h4><a href="#drivers">Drivers earn more, and stay</a></h4><p>Regression-driven clustering for a driver workforce.</p></li>
+        </ul>
+      </div>
+
+      <div class="col" id="oss">
+        <h3>Open Source &amp; Earlier</h3>
+        <ul>
+          <li><h4><a class="ext" href="https://github.com/kartikeyshaurya/SDV" target="_blank" rel="noopener">A self-driving car that learned by watching</a></h4><p>Behavioural cloning for steering and throttle on simulated tracks.</p></li>
+          <li><h4><a class="ext" href="https://github.com/kartikeyshaurya/Disaster_management_sysytem" target="_blank" rel="noopener">Sorting crisis messages in real time</a></h4><p>NLP classifier with a live prediction dashboard.</p></li>
+          <li><h4><a class="ext" href="https://github.com/kartikeyshaurya/fire_prediction" target="_blank" rel="noopener">Spotting fire before the alarm does</a></h4><p>CNN image detection for early hazard alerts.</p></li>
+          <li><h4><a class="ext" href="https://github.com/kartikeyshaurya/Sentiments_and_deep_Learning" target="_blank" rel="noopener">Sentiment analysis, trained and served on SageMaker</a></h4><p>End-to-end on AWS, 92% accuracy.</p></li>
+          <li><h4><a class="ext" href="https://github.com/kartikeyshaurya/deepseek_from_scratch" target="_blank" rel="noopener">DeepSeek, rebuilt in notebooks</a></h4><p>Working through the architecture piece by piece.</p></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== EXPERIENCE ========== -->
+  <section class="wrap section" id="experience" aria-labelledby="exp-h">
+    <div class="sec-h">
+      <h2 id="exp-h">Experience</h2>
+      <a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn ↗</a>
+    </div>
+
+    <div class="roles">
+      <article class="role">
+        <p class="when">May 2025 — <span class="now">Present</span> · Chandigarh</p>
+        <h3>Machine Learning Engineer</h3>
+        <p class="org">Creed Infotech</p>
+        <ul>
+          <li><b>Lead the vision, strategy and execution</b> of data-science and AI initiatives, aligned with core business objectives.</li>
+          <li>Designed and deployed AI support chatbots for Vnaya and Virtue Legal Services.</li>
+          <li>Built and deployed voice-enabled AI agents for ValueLoads, automating operational workflows.</li>
+        </ul>
+      </article>
+
+      <article class="role">
+        <p class="when">Jul 2024 — May 2025 · Chandigarh</p>
+        <h3>Data Scientist</h3>
+        <p class="org">Primotech</p>
+        <ul>
+          <li>Architected and deployed <b>LLM agents with LangChain and LangGraph</b> on the Rejara platform: autonomous data collection and inter-agent collaboration.</li>
+          <li>Fine-tuned Pegasus for conversational summarisation and BERT for topic classification; built Elasticsearch recommendation pipelines.</li>
+          <li>Developed scalable microservices and orchestration workflows across user segments.</li>
+        </ul>
+      </article>
+
+      <article class="role">
+        <p class="when">Aug 2022 — Jul 2024 · Mumbai</p>
+        <h3>Machine Learning Engineer</h3>
+        <p class="org">Sapio Analytics</p>
+        <ul>
+          <li>Partnered with the <b>Government of Assam</b> on multi-year law-enforcement analysis for patrol planning.</li>
+          <li>Driver performance clustering: income up 8–10%, attrition down about 15%.</li>
+          <li>LLM job-assistance chatbot with personalised recommendations; $10,000 in AWS credits.</li>
+          <li>Optimised a 160 GB+ data lake: writes up 40–50%, storage down 20%, response times 10–20% faster.</li>
+          <li>PII detection pipeline for compliant, secure data sharing.</li>
+        </ul>
+      </article>
+    </div>
+
+    <p class="edu">
+      <span><b>B.Tech, Computer Science Engineering</b> — Lovely Professional University, 2019–2023, CGPA 7.7/10</span>
+      <span><b>Deep Learning Nanodegree</b> — Udacity, Bertelsmann scholarship</span>
+    </p>
+  </section>
+
+  <!-- ========== ABOUT ========== -->
+  <section class="wrap section" id="about" aria-labelledby="about-h">
+    <div class="sec-h">
+      <h2 id="about-h">About</h2>
+    </div>
+
+    <div class="profile">
+      <div>
+        <svg class="portrait" role="img" aria-label="Placeholder portrait monogram"><use href="#ill-portrait"/></svg>
+      </div>
+
+      <div class="bio">
+        <p>Kartikey Shaurya is a machine learning engineer in Chandigarh who has spent three years putting AI into systems that other people depend on: a state government's patrol planning, a logistics company's phone lines, a legal firm's support desk, and the data lake an analytics company runs on.</p>
+        <p>His work sits where large language models meet infrastructure. He has architected multi-agent platforms with LangChain and LangGraph, fine-tuned Pegasus, BERT and DistilBERT for summarisation, classification and PII detection, built recommendation pipelines on Elasticsearch, and re-engineered a 160 GB warehouse on Airflow. Each project above is listed with the number it moved, because he asks for the baseline before he starts.</p>
+        <p>He holds a B.Tech in Computer Science from Lovely Professional University and completed Udacity's Deep Learning Nanodegree on a Bertelsmann scholarship. He is currently leading AI delivery at Creed Infotech and is open to senior ML and AI engineering roles.</p>
+      </div>
+
+      <div>
+        <dl class="stack">
+          <dt>Language</dt><dd><b>Python</b></dd>
+          <dt>LLMs &amp; agents</dt><dd><b>OpenAI API</b>, LangChain, <b>LangGraph</b>, LangSmith, RAG, voice agents, fine-tuning</dd>
+          <dt>Machine learning</dt><dd><b>PyTorch</b>, TensorFlow, Scikit-learn; transformers, summarisation, classification, clustering, recommenders</dd>
+          <dt>Search &amp; vectors</dt><dd><b>Elasticsearch</b>, Pinecone</dd>
+          <dt>Data &amp; MLOps</dt><dd><b>Airflow</b>, Docker, CI/CD, microservices, FastAPI, Flask, Streamlit, AWS</dd>
+          <dt>Databases</dt><dd>PostgreSQL, MySQL, MongoDB, Redshift</dd>
+        </dl>
+
+        <div class="notice" id="hire" style="margin-top:1.5rem">
+          <p class="kicker">Availability</p>
+          <h3>Open to senior ML and AI engineering roles</h3>
+          <p>Chandigarh, remote, or relocation for the right team. Replies within a day.</p>
+          <a class="btn" href="mailto:kartikeyshaurya@gmail.com?subject=Hello%20Kartikey">Email kartikeyshaurya@gmail.com</a>
+          <span class="alt">Or call <a href="tel:+917646032608">+91 76460 32608</a> · <a href="Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></span>
         </div>
-   </footer>
+      </div>
+    </div>
+  </section>
 
-  <script src="js/jquery-3.3.1.min.js"></script>
-  <script src="js/popper.min.js"></script>
-  <script src="js/bootstrap.min.js"></script>
-  <script src="js/Headroom.js"></script>
-  <script src="js/jQuery.headroom.js"></script>
-  <script src="js/owl.carousel.min.js"></script>
-  <script src="js/smoothscroll.js"></script>
-  <script src="js/custom.js"></script>
+  <!-- ========== IN DEPTH ========== -->
+  <section class="wrap section" aria-labelledby="depth-h">
+    <div class="sec-h">
+      <h2 id="depth-h">In depth</h2>
+      <a href="#top">Back to top ↑</a>
+    </div>
+
+    <div class="depth">
+
+      <article class="story" id="voice">
+        <figure><svg class="ill" aria-hidden="true"><use href="#ill-voice"/></svg><figcaption>Voice agents, ValueLoads, 2025.</figcaption></figure>
+        <div>
+          <p class="kicker">Agents &amp; LLMs <span class="fmt">Creed Infotech</span></p>
+          <h2>The agent that answers the phone</h2>
+          <p class="dek">Voice-enabled AI agents now take operational calls at a freight company and finish the workflow themselves.</p>
+          <div class="body">
+            <p>Logistics operations are conversations: a driver calling about a pickup, a customer asking where a load is, a broker confirming a rate. Each one used to land on a person. At ValueLoads, Kartikey designed and deployed <b>voice-enabled AI agents</b> that hold those conversations and act on them.</p>
+            <p>The agents listen, reason over the live call with a language model, and speak back, with the latency kept tight enough that it feels like a call rather than a form. Because they call the company's operational tools directly, a conversation ends with the record updated, not with a ticket for someone else to work.</p>
+            <p>The parts that mattered most were the unglamorous ones: a clean hand-off to a human when confidence drops, and observability on every turn so a bad call can be replayed and diagnosed instead of argued about.</p>
+          </div>
+          <a class="back" href="#top">Front page ↑</a>
+        </div>
+        <dl class="facts">
+          <dt>Role</dt><dd>Design, build, deploy</dd>
+          <dt>Where</dt><dd>Creed Infotech, for ValueLoads</dd>
+          <dt>When</dt><dd>2025</dd>
+          <dt>Stack</dt><dd>LLM agents, speech in and out, OpenAI API, FastAPI, Docker</dd>
+        </dl>
+      </article>
+
+      <article class="story" id="support">
+        <figure><svg class="ill" aria-hidden="true"><use href="#ill-chat"/></svg><figcaption>Support assistants for Vnaya and Virtue Legal Services.</figcaption></figure>
+        <div>
+          <p class="kicker">Agents &amp; LLMs <span class="fmt">Creed Infotech</span></p>
+          <h2>Support that knows when not to answer</h2>
+          <p class="dek">AI assistants for an online tutoring company and a legal-services firm, grounded in each business's own material.</p>
+          <div class="body">
+            <p>Vnaya teaches children online. Virtue Legal Services advises clients on matters where a wrong answer has consequences. Both had support queues growing faster than their teams, and both needed an assistant that answered from what the company actually says rather than from what a model guesses.</p>
+            <p>Kartikey designed and deployed <b>AI-powered support chatbots</b> for each, retrieving from the company's own documents and policies so that replies are traceable. The deployments are separate but share tooling, so an improvement to one ships to both.</p>
+            <p>For the legal assistant the key feature is restraint: it knows which questions it must decline and route to a person. Evaluation sets were built from real tickets before launch, so the first users were not the test set.</p>
+          </div>
+          <a class="back" href="#top">Front page ↑</a>
+        </div>
+        <dl class="facts">
+          <dt>Role</dt><dd>Design, build, deploy</dd>
+          <dt>Where</dt><dd>Creed Infotech, for Vnaya and Virtue Legal Services</dd>
+          <dt>When</dt><dd>2025</dd>
+          <dt>Stack</dt><dd>RAG, LangChain, OpenAI API, Pinecone, FastAPI</dd>
+        </dl>
+      </article>
+
+      <article class="story" id="rejara">
+        <figure><svg class="ill" aria-hidden="true"><use href="#ill-agents"/></svg><figcaption>Agent graph on the Rejara platform.</figcaption></figure>
+        <div>
+          <p class="kicker">Agents &amp; LLMs <span class="fmt">Primotech</span></p>
+          <h2>Agents that collect data and hand work to each other</h2>
+          <p class="dek">A multi-agent platform built on LangChain and LangGraph, with fine-tuned Pegasus and BERT and recommendations served from Elasticsearch.</p>
+          <div class="body">
+            <p>On the Rejara platform Kartikey architected and deployed <b>LLM-driven agents</b> that gather data autonomously and collaborate: one collects, another validates, another condenses. Building them on LangGraph gave each agent explicit state, so long-running tasks can pause, resume and be inspected rather than restarted.</p>
+            <p>Underneath the agents sit models he fine-tuned for the job: <b>Pegasus</b> for conversational summarisation and <b>BERT</b> for topic classification. Their outputs feed <b>Elasticsearch-based recommendation pipelines</b> that reduced manual review time while improving the accuracy of the insights reviewers saw.</p>
+            <p>Each agent runs as its own microservice with its own scaling profile, orchestrated as workflows, which is what let the platform adapt across user segments without rewrites.</p>
+          </div>
+          <a class="back" href="#top">Front page ↑</a>
+        </div>
+        <dl class="facts">
+          <dt>Role</dt><dd>Architecture, modelling, deployment</dd>
+          <dt>Where</dt><dd>Primotech, Rejara platform</dd>
+          <dt>When</dt><dd>2024–2025</dd>
+          <dt>Stack</dt><dd>LangGraph, LangChain, OpenAI API, Pegasus, BERT, Elasticsearch, microservices</dd>
+        </dl>
+      </article>
+
+      <article class="story" id="lake">
+        <figure><svg class="ill" aria-hidden="true"><use href="#ill-lake"/></svg><figcaption>Neural Ocean: raw, cleaned and modelled layers.</figcaption></figure>
+        <div>
+          <p class="kicker">Data &amp; Pipelines <span class="fmt">Sapio Analytics</span></p>
+          <h2>A 160 GB data lake stops being the bottleneck</h2>
+          <p class="dek">Neural Ocean, the company's internal data lake, was rebuilt as a warehouse on Airflow. Writes got 40–50% faster and storage shrank by a fifth.</p>
+          <div class="body">
+            <p>Sapio's analysts worked on top of a 160 GB+ internal data lake that was slow to write to and expensive to keep. Kartikey implemented a <b>warehouse architecture with Airflow</b>: raw, cleaned and modelled layers, each hop owned by a DAG, so lineage is visible and reruns are safe.</p>
+            <p>Partitioning and compaction were tuned to the queries people actually ran, which is where the gains came from: <b>write throughput up 40–50%</b>, <b>storage footprint down 20%</b>, response times 10–20% faster across the board and analytical workloads up to 40% faster.</p>
+            <p>In the same role he built a <b>PII detection pipeline</b>, so datasets could be shared internally without a manual review step, and profiling tooling that the analytics team used daily.</p>
+          </div>
+          <a class="back" href="#top">Front page ↑</a>
+        </div>
+        <dl class="facts">
+          <dt>Role</dt><dd>Architecture, implementation</dd>
+          <dt>Where</dt><dd>Sapio Analytics, Mumbai</dd>
+          <dt>When</dt><dd>2022–2024</dd>
+          <dt>Stack</dt><dd>Airflow, Redshift, PostgreSQL, Python</dd>
+          <dt>Outcome</dt><dd>Writes +40–50%, storage −20%, analytics −40% latency</dd>
+        </dl>
+      </article>
+
+      <article class="story" id="assam">
+        <figure><svg class="ill" aria-hidden="true"><use href="#ill-map"/></svg><figcaption>Incident density over multiple years.</figcaption></figure>
+        <div>
+          <p class="kicker">Public Sector <span class="fmt">Sapio Analytics</span></p>
+          <h2>Where to send the patrols</h2>
+          <p class="dek">Multi-year law-enforcement data for the Government of Assam, turned into evidence for patrol planning and resource allocation.</p>
+          <div class="body">
+            <p>Working directly with the Assam Government, Kartikey analysed <b>multi-year patterns in law-enforcement data</b>: where incidents concentrated, when they recurred, and how that shifted over time.</p>
+            <p>The output was not a model for its own sake but a set of findings the government could act on, informing more efficient patrol planning and how resources were allocated across the state.</p>
+          </div>
+          <a class="back" href="#top">Front page ↑</a>
+        </div>
+        <dl class="facts">
+          <dt>Role</dt><dd>Analysis, modelling</dd>
+          <dt>Where</dt><dd>Sapio Analytics, for the Government of Assam</dd>
+          <dt>When</dt><dd>2022–2024</dd>
+          <dt>Stack</dt><dd>Python, spatio-temporal analysis, clustering, dashboards</dd>
+        </dl>
+      </article>
+
+      <article class="story" id="drivers">
+        <figure><svg class="ill" aria-hidden="true"><use href="#ill-clusters"/></svg><figcaption>Driver performance clusters.</figcaption></figure>
+        <div>
+          <p class="kicker">Public Sector <span class="fmt">Sapio Analytics</span></p>
+          <h2>Drivers earn more, and stay</h2>
+          <p class="dek">A regression-driven clustering model matched incentives to how drivers actually worked. Income rose 8–10%; attrition fell about 15%.</p>
+          <div class="body">
+            <p>A driver workforce is not one population. Kartikey built <b>regression-driven performance clustering</b> that separated drivers by how they actually drove and earned, so that incentives and routing could be set per group instead of for an average that fit nobody.</p>
+            <p>The measured result was an <b>8–10% rise in average driver income</b> and a <b>roughly 15% drop in attrition</b>, the number the business cared about most.</p>
+          </div>
+          <a class="back" href="#top">Front page ↑</a>
+        </div>
+        <dl class="facts">
+          <dt>Role</dt><dd>Modelling, deployment</dd>
+          <dt>Where</dt><dd>Sapio Analytics</dd>
+          <dt>When</dt><dd>2022–2024</dd>
+          <dt>Stack</dt><dd>Scikit-learn, regression, clustering, PostgreSQL</dd>
+          <dt>Outcome</dt><dd>Income +8–10%, attrition −15%</dd>
+        </dl>
+      </article>
+
+      <article class="story" id="samarth">
+        <figure><svg class="ill" aria-hidden="true"><use href="#ill-jobs"/></svg><figcaption>Job matching on the Samarth platform.</figcaption></figure>
+        <div>
+          <p class="kicker">Agents &amp; LLMs <span class="fmt">Sapio Analytics</span></p>
+          <h2>A job coach built from an LLM</h2>
+          <p class="dek">A chatbot with personalised job recommendations for a government skilling platform, recognised with $10,000 in AWS credits.</p>
+          <div class="body">
+            <p>On the Samarth platform Kartikey created an <b>LLM-based job-assistance chatbot</b> integrated with personalised recommendations, so a worker could ask in plain language and get openings that matched their profile. The work was recognised with <b>$10,000 in AWS credits</b>.</p>
+            <p>Around it he built the parts that make such a thing trustworthy: <b>job-matching recommenders</b>, improved data ingestion and MIS reporting pipelines, and an AI-powered bot that checked the quality and coverage of data collection in the field.</p>
+          </div>
+          <a class="back" href="#top">Front page ↑</a>
+        </div>
+        <dl class="facts">
+          <dt>Role</dt><dd>Build, deploy</dd>
+          <dt>Where</dt><dd>Sapio Analytics, Samarth platform</dd>
+          <dt>When</dt><dd>2022–2024</dd>
+          <dt>Stack</dt><dd>LLMs, recommenders, AWS, data pipelines</dd>
+          <dt>Recognition</dt><dd>$10,000 AWS credits</dd>
+        </dl>
+      </article>
+
+      <article class="story" id="anon">
+        <figure><svg class="ill" aria-hidden="true"><use href="#ill-redact"/></svg><figcaption>Text redaction and face anonymisation.</figcaption></figure>
+        <div>
+          <p class="kicker">Public Sector <span class="fmt">Government initiative</span></p>
+          <h2>Third place for an anonymiser that hides names and faces</h2>
+          <p class="dek">Fine-tuned DistilBERT finds personal information in text; YuNet finds faces in images; a UI lets each team set its own redaction rules.</p>
+          <div class="body">
+            <p>Data is useful to share and dangerous to share. For the West Bengal Government's data-security initiative Kartikey built <b>Data Anonymizer</b>, which placed third.</p>
+            <p>Text passes through a <b>DistilBERT model fine-tuned for PII detection</b>; images pass through <b>YuNet</b> for face detection and anonymisation. Because every organisation has its own idea of what counts as sensitive, the tool ships with a UI for customisable redaction rules rather than a fixed list.</p>
+          </div>
+          <a class="back" href="#top">Front page ↑</a>
+        </div>
+        <dl class="facts">
+          <dt>Role</dt><dd>Modelling, build</dd>
+          <dt>Where</dt><dd>West Bengal Government data-security initiative</dd>
+          <dt>Result</dt><dd>3rd place</dd>
+          <dt>Stack</dt><dd>DistilBERT, YuNet, PyTorch, Streamlit</dd>
+          <dt>Code</dt><dd><a href="https://github.com/kartikeyshaurya/Annon" target="_blank" rel="noopener">github.com/kartikeyshaurya/Annon ↗</a></dd>
+        </dl>
+      </article>
+
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <p class="logo">Kartikey Shaurya</p>
+      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="#agents">Agents &amp; LLMs</a></li>
+        <li><a href="#search">Search &amp; Recommendation</a></li>
+        <li><a href="#data">Data &amp; Pipelines</a></li>
+        <li><a href="#public">Public Sector</a></li>
+        <li><a href="#experience">Experience</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Elsewhere</h4>
+      <ul>
+        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href="Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+        <li><a href="tel:+917646032608">+91 76460 32608</a></li>
+      </ul>
+    </div>
+    <p class="fine">
+      <span>© <span id="year">2026</span> Kartikey Shaurya</span>
+      <span>Hand-written HTML and CSS. <a href="https://github.com/kartikeyshaurya/kartikeyshaurya.github.io" target="_blank" rel="noopener">Source</a></span>
+    </p>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var d = document;
+    d.getElementById("today").textContent = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+    d.getElementById("year").textContent = new Date().getFullYear();
+
+    // Highlight the section in view in the primary nav.
+    var links = d.querySelectorAll(".primary a[href^='#']");
+    if ("IntersectionObserver" in window) {
+      var map = {};
+      links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) {
+          if (!e.isIntersecting) return;
+          links.forEach(function (a) { a.classList.remove("is-active"); });
+          map[e.target.id].classList.add("is-active");
+        });
+      }, { rootMargin: "-20% 0px -70% 0px" });
+      Object.keys(map).forEach(function (id) { var el = d.getElementById(id); el && io.observe(el); });
+    }
+  })();
+</script>
 </body>
 </html>

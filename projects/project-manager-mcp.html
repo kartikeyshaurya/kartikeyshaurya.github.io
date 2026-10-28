@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>AI-native project manager: A project tracker your AI assistant can work inside, safely | Kartikey Shaurya</title>
+  <meta name="description" content="An AI-native project manager that puts planning, bugs, tickets, team chat and executive reporting in one multi-tenant app. ChatGPT and Claude can create and update work through MCP, acting with the user&#x27;s own permissions.">
+  <meta name="author" content="Kartikey Shaurya">
+  <link rel="canonical" href="https://kartikeyshaurya.github.io/projects/project-manager-mcp.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="AI-native project manager: A project tracker your AI assistant can work inside, safely | Kartikey Shaurya">
+  <meta property="og:description" content="An AI-native project manager that puts planning, bugs, tickets, team chat and executive reporting in one multi-tenant app. ChatGPT and Claude can create and update work through MCP, acting with the user&#x27;s own permissions.">
+  <meta property="og:url" content="https://kartikeyshaurya.github.io/projects/project-manager-mcp.html">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="wrap util">
+    <ul>
+      <li>Chandigarh, India</li>
+    </ul>
+    <ul>
+      <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
+      <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a class="pdf" href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+    </ul>
+  </div>
+
+  <div class="wrap masthead masthead--slim">
+    <a class="logo" href="../index.html">Kartikey Shaurya</a>
+    <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
+  </div>
+
+  <nav class="primary" aria-label="Sections">
+    <ul>
+      <li><a href="../index.html">Front page</a></li>
+      <li><a href="../projects/index.html" class="is-active" aria-current="page">Projects</a></li>
+      <li><a href="../index.html#experience">Experience</a></li>
+      <li><a href="../index.html#about">About</a></li>
+      <li><a class="cta" href="../index.html#hire">Hire me</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" class="case">
+  <section class="wrap case-head">
+    <p class="kicker"><a href="index.html">Projects</a> <span class="fmt">Platforms &amp; Products</span></p>
+    <h1>A project tracker your AI assistant can work inside, safely</h1>
+    <p class="dek">An AI-native project manager that puts planning, bugs, tickets, team chat and executive reporting in one multi-tenant app. ChatGPT and Claude can create and update work through MCP, acting with the user&#x27;s own permissions.</p>
+    <p class="byline">By <b>Kartikey Shaurya</b> · AI-native project manager · Solo build</p>
+  </section>
+
+  <div class="wrap case-grid">
+    <div class="case-body">
+
+      <section aria-labelledby="problem-h">
+        <h2 id="problem-h">The problem</h2>
+        <div class="prose"><p>Product teams split their work across a tracker, a chat tool, a bug form and a slide deck for leadership. Each tool has its own idea of who can see what, and the weekly summary for the CEO gets assembled by hand from all of them.</p>
+<p>AI assistants added a new version of the same problem. People already ask ChatGPT or Claude to turn a conversation into tasks, then copy the answer across by hand. Letting an assistant write straight into a workspace is only useful if it respects the same permissions as the person, cannot invent numbers in a report, and cannot quietly burn through the AI budget.</p></div>
+      </section>
+
+      <section aria-labelledby="approach-h">
+        <h2 id="approach-h">How I thought about it</h2>
+        <div class="prose prose--lead"><p>I started from the write path. Tasks get created by the UI, CSV import, ticket triage, automations, the AI assistant and MCP, and every one of those needs the same side effects: field history, activity log, notifications, watchers, webhooks, search re-indexing and a real-time broadcast. If each entry point did its own writes, each would forget something. <b>So I wrote a short design document that makes one task service the only writer</b>, and hung workflow rules, custom fields and dependency checks off its extension points. That is also why the app is a modular monolith: a task write touching ten concerns is one transaction there, and a saga anywhere else.</p>
+<p>For tenancy I held one rule: the workspace is always derived on the server from the user&#x27;s membership, never taken from the request. Permissions are a cumulative matrix of module and action (admin includes edit, edit includes view). The stricter layers, private projects and team scoping, sit behind flags with an access report you can review before switching them on.</p>
+<p>For AI, the principle was facts first. Rules compute the counts, keys and dates, and the model only phrases them. Before a summary is accepted, every number in it is checked against the facts and every task reference against real tasks, and anything unsupported falls back to a plain sentence that is correct. When the AI proposes changes, it produces drafts that are checked against real projects and people, and a person approves them through the same single write path. Every model call goes through one gateway with feature flags, separate budgets for interactive and background work, and an audit record.</p>
+<p>MCP came last and reused all of that. I built a small OAuth server on top of the existing accounts, so ChatGPT and Claude connect with the user&#x27;s own login and act with the user&#x27;s own permissions. The MCP server is a thin layer over the public API: it returns minimal results, labels which tools read, write or destroy, and stays read-only unless writes are deliberately switched on.</p></div>
+      </section>
+
+      <section aria-labelledby="built-h">
+        <h2 id="built-h">What I built</h2>
+        <ul class="ticks"><li>Planning: projects, issue keys, subtasks, epics, sprints, drag-and-drop boards with stable ordering, a backlog, a calendar and a dependency timeline</li>
+<li>Task dependencies with cycle detection that is safe under concurrent edits, a per-project warn or block mode, and automatic date scheduling</li>
+<li>Per-project workflows with transition rules, validated custom fields, and team-scoped projects behind a feature flag</li>
+<li>Collaboration: rich-text descriptions, mentions, watchers, notifications, team chat with presence, and real-time updates over WebSockets</li>
+<li>An AI gateway with feature flags, token budgets, scrubbing of secrets and personal data before any model call, prompt versions locked by tests, and an audit record per call</li>
+<li>AI features on top of it: task drafting from chat and screenshots, triage, hybrid semantic search, duplicate detection, standups, digests and executive briefs</li>
+<li>Scheduled executive summaries rendered to HTML and PDF and emailed at most once</li>
+<li>An MCP server and a self-hosted OAuth 2.1 authorization server, so AI assistants work inside a workspace with the user&#x27;s own permissions</li></ul>
+      </section>
+
+      <section aria-labelledby="arch-h">
+        <h2 id="arch-h">How it fits together</h2>
+        <figure class="diagram">
+          <pre class="mermaid">flowchart LR
+  U[&quot;Browser&lt;br/&gt;(React)&quot;] --&gt; API[&quot;API&lt;br/&gt;(FastAPI modular monolith)&quot;]
+  U --&gt; WS[&quot;WebSockets&quot;]
+  WS --&gt; API
+  API --&gt; TS[&quot;Single task&lt;br/&gt;write path&quot;]
+  API --&gt; AIG[&quot;AI gateway&lt;br/&gt;flags, budgets, audit&quot;]
+  TS --&gt; PG[(&quot;PostgreSQL&lt;br/&gt;+ pgvector&quot;)]
+  API --&gt; RD[(&quot;Redis&lt;br/&gt;jobs + pub/sub&quot;)]
+  RD --&gt; WK[&quot;Background workers&quot;]
+  WK --&gt; AIG
+  AIG --&gt; LLM[&quot;LLM provider&quot;]
+  AS[&quot;ChatGPT or Claude&quot;] --&gt;|&quot;OAuth sign-in&quot;| API
+  AS --&gt; MCP[&quot;MCP server&quot;]
+  MCP --&gt;|&quot;user&#x27;s own token&quot;| API</pre>
+          <figcaption>Every write, whether it comes from the UI, a background job or an AI assistant, passes the same API checks and the same task write path.</figcaption>
+        </figure>
+        <dl class="components"><div><dt>API</dt><dd>One deployable that resolves the user&#x27;s organization and workspace on the server and enforces the permission matrix on every route.</dd></div>
+<div><dt>Single task write path</dt><dd>The only code that creates or changes tasks, so history, notifications, webhooks, re-indexing and real-time updates are never skipped.</dd></div>
+<div><dt>AI gateway</dt><dd>Wraps every model call with feature flags, token budgets, data scrubbing, prompt versions and an audit record.</dd></div>
+<div><dt>Background workers</dt><dd>Run assistant replies, triage, digests, standups, executive reports and batch AI jobs off a Redis-backed queue.</dd></div>
+<div><dt>PostgreSQL with pgvector</dt><dd>Holds all workspace data and serves hybrid search from full-text and vector indexes, with no separate search cluster.</dd></div>
+<div><dt>MCP server</dt><dd>A thin layer over the public API that forwards the user&#x27;s own token and returns minimal, schema-exact results.</dd></div></dl>
+      </section>
+
+      <section aria-labelledby="flow-h">
+        <h2 id="flow-h">What happens when you ask ChatGPT to create a task</h2>
+        <ol class="steps"><li>ChatGPT discovers the app&#x27;s authorization server and registers itself as a client, using the standard OAuth flow that connectors expect.</li>
+<li>The user signs in on the app&#x27;s own consent page with their existing account and approves access.</li>
+<li>ChatGPT calls a tool on the MCP server, which forwards the user&#x27;s token to the public API.</li>
+<li>The API validates the token, derives the workspace from the user&#x27;s membership, and checks permissions exactly as it would for a request from the web app.</li>
+<li>The task is created through the single write path, so history, notifications, webhooks and search indexing all run.</li>
+<li>The MCP server returns a minimal result with no internal identifiers, and teammates see the new task appear on their boards in real time.</li></ol>
+      </section>
+
+      <section aria-labelledby="dec-h">
+        <h2 id="dec-h">Decisions and trade-offs</h2>
+        <div class="decisions"><article class="decision">
+  <h3>One task write path</h3>
+  <dl>
+    <dt>Why</dt><dd>Without it, import, triage, automations, the assistant and MCP would each forget a side effect, and the bugs would show up as missing history or silent webhooks.</dd>
+    <dt>Instead of</dt><dd>Side effects in route handlers or ORM event hooks.</dd>
+    <dt>The cost</dt><dd>A large module that everything depends on, and every new side effect has to be added there.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Facts first for AI summaries</h3>
+  <dl>
+    <dt>Why</dt><dd>Rules compute the numbers, the model only writes the sentences, and a validator rejects any number or task reference that is not in the facts. A summary cannot claim twelve overdue tasks when there are three.</dd>
+    <dt>Instead of</dt><dd>Letting the model read raw data and write the summary.</dd>
+    <dt>The cost</dt><dd>More code per feature, and output that is sometimes plainer than free-form text.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>The AI proposes drafts and a person approves them</h3>
+  <dl>
+    <dt>Why</dt><dd>Drafts are checked against real projects and people, then applied through the normal write path. That builds trust, and every approval or rejection becomes an outcome signal for evaluation.</dd>
+    <dt>Instead of</dt><dd>Letting the AI write tasks directly.</dd>
+    <dt>The cost</dt><dd>One extra click per change.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Separate budgets for interactive and background AI</h3>
+  <dl>
+    <dt>Why</dt><dd>An audit showed scheduled jobs consuming the shared budget, so users were refused because of work they never asked for.</dd>
+    <dt>Instead of</dt><dd>One global budget per workspace.</dd>
+    <dt>The cost</dt><dd>Three budgets to tune instead of one.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>A self-hosted OAuth server for MCP</h3>
+  <dl>
+    <dt>Why</dt><dd>Assistant connectors require a real OAuth flow, and building on the existing accounts means users connect with the login they already have.</dd>
+    <dt>Instead of</dt><dd>A managed identity provider, or pasting personal tokens, which connectors reject.</dd>
+    <dt>The cost</dt><dd>I own the security of that server, so MCP is read-only by default and abuse protection is a pre-launch requirement.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Hybrid search inside Postgres</h3>
+  <dl>
+    <dt>Why</dt><dd>Full-text and vector search run in the main database with no extra cluster, and a pure-code fallback lets the tests run without the vector extension.</dd>
+    <dt>Instead of</dt><dd>Elasticsearch or a dedicated vector database.</dd>
+    <dt>The cost</dt><dd>A dedicated retrieval tier will be needed if vector search ever saturates.</dd>
+  </dl>
+</article></div>
+      </section>
+
+      <section aria-labelledby="hard-h">
+        <h2 id="hard-h">The hard parts</h2>
+        <ul class="hard"><li><h3>Dependency cycles under concurrency</h3><p>Two people linking A to B and B to A at the same moment could create a loop. I serialised the cycle check per workspace with a transaction-scoped lock. I also treated &#x27;done&#x27; as a status category rather than a fixed key, so custom workflows still unblock dependent tasks correctly.</p></li>
+<li><h3>Making AI trustworthy and affordable</h3><p>A self-audit found AI features with inconsistent behaviour in the UI, blocking calls inside async handlers, and background jobs eating user budgets. I centralised the gateway, added versioned prompts checked by tests, split the budgets, introduced facts-first validation and streaming, and gave the frontend one shared contract for every AI result.</p></li>
+<li><h3>Connecting to ChatGPT</h3><p>Pasting a personal token was rejected, because connectors expect OAuth. I built a narrow authorization server with discovery, consent and tokens bound to the MCP resource, on top of the existing account system. Every MCP tool is annotated with whether it reads, writes or destroys data.</p></li>
+<li><h3>Frontend weight with a rich editor</h3><p>The rich-text editor and drag-and-drop libraries are heavy. I lazy-load every page, split CSS per route, keep shared hooks out of the entry bundle, and enforce byte budgets in the build, so a regression fails before it ships.</p></li></ul>
+      </section>
+
+      <section aria-labelledby="next-h">
+        <h2 id="next-h">What I'd do next</h2>
+        <ul class="ticks ticks--plain"><li>Run the backend tests, end-to-end tests and bundle budgets in CI on every merge request.</li>
+<li>Add queue-depth and job-age metrics, and split background queues by priority.</li>
+<li>Move WebSocket and streaming connections into a dedicated real-time gateway once connection counts justify it.</li>
+<li>Add database-level row security as defence in depth behind the application checks, then finish the ChatGPT app submission.</li></ul>
+      </section>
+
+      <blockquote class="takeaway">
+        <p class="kicker">What I took away</p>
+        <p>When many things write the same data, give them one door. The single task write path made everything after it cheap: AI drafts, automations and MCP all inherited correct behaviour without extra work. The same idea applies to AI itself. Put every model call behind one gateway, and let the model phrase facts instead of producing them.</p>
+      </blockquote>
+    </div>
+
+    <aside class="case-side">
+      <dl class="facts">
+        <dt>Role</dt><dd>Sole engineer: architecture, backend, frontend, AI layer, MCP server</dd>
+        <dt>Context</dt><dd>Solo build</dd>
+        <dt>Status</dt><dd>MVP</dd>
+        <dt>Stack</dt><dd>FastAPI, PostgreSQL + pgvector, Redis, Celery, React, TypeScript, TipTap, OpenAI, MCP, OAuth 2.1</dd>
+      </dl>
+      <nav class="toc" aria-label="On this page">
+        <p class="kicker">On this page</p>
+        <ul>
+          <li><a href="#problem-h">The problem</a></li>
+          <li><a href="#approach-h">How I thought about it</a></li>
+          <li><a href="#built-h">What I built</a></li>
+          <li><a href="#arch-h">Architecture</a></li>
+          <li><a href="#flow-h">Key flow</a></li>
+          <li><a href="#dec-h">Decisions</a></li>
+          <li><a href="#hard-h">Hard parts</a></li>
+        </ul>
+      </nav>
+    </aside>
+  </div>
+
+  <nav class="wrap pager" aria-label="More projects">
+    <a class="prev" href="bulkmailer.html"><span>Previous</span>Bulk email that keeps sending when its providers fail</a><a class="next" href="tutoring-ops-platform.html"><span>Next</span>One database behind a tutoring company&#x27;s staff and families</a>
+  </nav>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <p class="logo">Kartikey Shaurya</p>
+      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="../index.html">Front page</a></li>
+        <li><a href="../projects/index.html">All projects</a></li>
+        <li><a href="../index.html#experience">Experience</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Elsewhere</h4>
+      <ul>
+        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+      </ul>
+    </div>
+    <p class="fine">
+      <span>© 2026 Kartikey Shaurya</span>
+      <span>Most client names and internal details are withheld. Architecture is shown at the component level.</span>
+    </p>
+  </div>
+</footer>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: "strict",
+    theme: "base",
+    flowchart: { curve: "basis", htmlLabels: true },
+    themeVariables: {
+      fontFamily: "Schibsted Grotesk, Helvetica Neue, Arial, sans-serif",
+      fontSize: "15px",
+      background: "#faedda",
+      primaryColor: "#fffdf9",
+      primaryBorderColor: "#1c1a17",
+      primaryTextColor: "#1c1a17",
+      lineColor: "#a51c30",
+      secondaryColor: "#faedda",
+      tertiaryColor: "#fffbf4",
+      clusterBkg: "#fffbf4",
+      clusterBorder: "#b9b8ad",
+      edgeLabelBackground: "#faedda"
+    }
+  });
+</script>
+</body>
+</html>

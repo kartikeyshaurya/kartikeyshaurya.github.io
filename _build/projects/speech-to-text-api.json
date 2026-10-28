@@ -1,0 +1,144 @@
+{
+  "slug": "speech-to-text-api",
+  "theme": "ml",
+  "order": 1,
+  "title": "Speech-to-Text API",
+  "headline": "An OpenAI-compatible transcription service that runs on plain CPUs",
+  "dek": "I built a self-hosted speech-to-text platform that existing OpenAI client code can call unchanged. It runs NVIDIA's Parakeet model on CPU and turns a model that hears 30 seconds at a time into a service that handles recordings hours long.",
+  "summary": "Drop-in OpenAI-compatible transcription API running Parakeet on CPU, with durable jobs for hours-long audio.",
+  "client": "Solo build",
+  "role": "Sole engineer: model serving, audio pipeline, API, queueing, developer console",
+  "status": "Production-ready MVP for a single VM",
+  "stack": [
+    "Python",
+    "FastAPI",
+    "NVIDIA Parakeet on ONNX Runtime",
+    "Arq and Redis",
+    "PostgreSQL",
+    "MinIO (S3 API)",
+    "ffmpeg",
+    "React and TypeScript",
+    "Caddy",
+    "Docker Compose"
+  ],
+  "problem": [
+    "Hosted transcription APIs charge per minute and send audio off the premises. Self-hosting on GPUs is expensive to keep running around the clock, and this workload is mostly steady batch work: meetings, calls and recordings that run from a few minutes to several hours, where nobody needs the answer in milliseconds.",
+    "The people who feel this are developers who already have code written against OpenAI's transcription API and don't want to rewrite it, organisation owners who need to issue keys and see usage, and operators who have to size and run the service on ordinary hardware. The goal was to run a modern open speech model on commodity CPUs, keep the OpenAI contract exactly, and make long recordings reliable."
+  ],
+  "approach": [
+    "The first thing I noticed was that the workload was bound by throughput, not latency. Most audio is batch work where minutes of turnaround are fine. That made CPU inference a real option: several core-pinned instances of Parakeet in ONNX Runtime on one large VM, with a predictable cost and no GPU scheduling. I treated the throughput estimate as a hypothesis, not a fact, and wrote a benchmark tool so sizing gets settled on the target hardware before anyone commits to it.",
+    "The constraint that shaped everything else was that the ONNX export of the model only handles about 30 seconds of audio per call. So the core problem became <b>the seams</b>: how to cut hours of audio into short pieces and join them back into one transcript without splitting a word or repeating one. I settled on cutting at the middle of a detected silence near each target boundary, adding a short overlap between chunks, and giving every word exactly one owner when stitching, based on which side of the overlap midpoint its centre falls. I kept the planner and the stitcher as pure functions, so I could test the edge cases without running ffmpeg or the model.",
+    "For the API, I chose to copy the OpenAI contract instead of designing my own. Adoption then costs nothing: a client changes one base URL. It also pushed me towards a clean internal design. One canonical timestamped result is stored per job, and every output format (plain text, JSON, SRT, VTT, verbose JSON with word timings) is rendered from it when it is read.",
+    "The principle I settled on was <b>one durable path for every job</b>. Even a short synchronous request is a queued job that the gateway waits on with a time budget. If the budget runs out, the caller gets a job ID to poll instead of an error, so work is never lost. Separate queues mean a two-hour batch recording can never block a short request that someone is sitting and waiting for."
+  ],
+  "built": [
+    "An OpenAI-compatible transcription and translation API with model aliases, all five response formats, segment and word timestamps, and errors in OpenAI's shape.",
+    "A long-audio pipeline that normalises audio with ffmpeg, finds silences, plans overlapping chunks, transcribes them in parallel and stitches one timestamped transcript.",
+    "An engine pool that caps in-flight inference so the ONNX threads never oversubscribe the CPU cores, and that also spreads load across engine instances without a separate load balancer.",
+    "Three isolated work queues on Arq and Redis, for interactive requests, batch jobs and webhook delivery, each with its own workers.",
+    "Multi-tenant platform features: hashed API keys with scopes, per-key rate limits, monthly quotas billed on the real decoded audio duration, and idempotent submissions.",
+    "Signed webhooks with retries, exponential backoff and a visible dead-letter state, plus a guard that refuses to deliver to private network addresses.",
+    "Failure recovery: bounded retries for transient engine errors, immediate non-retried failure for undecodable audio, a reaper for jobs left behind by a crashed worker, and a graceful drain on deploy.",
+    "A React developer console for signup, key management, a playground, job history, usage and webhook testing."
+  ],
+  "architecture": {
+    "mermaid": "flowchart LR\n  A[\"Client<br/>(OpenAI SDK)\"] --> B[\"Edge proxy<br/>TLS, upload cap\"]\n  C[\"Developer console\"] --> B\n  B --> D[\"API gateway<br/>auth, quota, submit\"]\n  D --> E[\"Job database\"]\n  D --> F[\"Object storage<br/>audio and results\"]\n  D --> G[\"Priority queues<br/>interactive, batch\"]\n  G --> H[\"Transcription workers<br/>normalise, chunk, stitch\"]\n  H --> I[\"Parakeet engine pool<br/>ONNX on CPU\"]\n  H --> F\n  H --> E\n  H --> J[\"Webhook queue<br/>and worker\"]\n  J --> K[\"Customer endpoint\"]",
+    "caption": "Requests pass through one gateway into durable queues, and workers turn long audio into short chunks for a pool of CPU engine instances.",
+    "components": [
+      {
+        "name": "API gateway",
+        "desc": "Checks keys, limits and quotas, stores the upload, creates the job and decides whether the caller waits or gets a job ID."
+      },
+      {
+        "name": "Priority queues",
+        "desc": "Separate queues for interactive and batch work, so long recordings never sit in front of a short request."
+      },
+      {
+        "name": "Transcription workers",
+        "desc": "Normalise the audio, plan silence-aware chunks, fan them out to the engines and stitch the results into one transcript."
+      },
+      {
+        "name": "Parakeet engine pool",
+        "desc": "Several CPU-pinned instances of the ONNX model behind a slot pool that bounds how much inference runs at once."
+      },
+      {
+        "name": "Database and object storage",
+        "desc": "The database holds jobs, tenants and the usage ledger, while object storage holds the audio and the canonical result."
+      },
+      {
+        "name": "Webhook worker",
+        "desc": "Delivers signed completion notices on its own queue, with backoff and a dead-letter state, so retries never use transcription capacity."
+      }
+    ]
+  },
+  "flow": {
+    "title": "What happens to an uploaded recording",
+    "steps": [
+      "A client submits audio through the OpenAI SDK. The gateway checks the key, its rate limit and the tenant's monthly quota.",
+      "A small file with no webhook goes to the interactive queue and the caller waits. A large file, or any request with a webhook, gets a job ID straight away and goes to the batch queue.",
+      "The audio is saved to object storage and a job record is created, so nothing depends on the request staying open.",
+      "A worker normalises the audio to the format the model expects, measures its exact duration, and fails undecodable files immediately without retrying.",
+      "The worker finds silences, plans overlapping chunks of about 30 seconds, and sends them in parallel to the engine pool within its slot limit.",
+      "Chunk results are shifted to global time, each word in an overlap is kept exactly once, and one canonical transcript is stored.",
+      "The job is metered on its real audio duration and a signed webhook is queued, with retries if the customer's endpoint is down.",
+      "The client can fetch the result later in any format, rendered from the stored transcript."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "Run Parakeet on CPU through ONNX Runtime",
+      "why": "The workload is steady batch work, not latency-critical. Several core-pinned CPU instances on one VM can cover it at a predictable cost, and Parakeet gives segment and word timestamps out of the box.",
+      "alternative": "Whisper on a GPU, or a hosted transcription API.",
+      "tradeoff": "Each stream is slower, real-time use is only best effort, and the capacity estimate has to be confirmed by benchmarking on the target hardware."
+    },
+    {
+      "decision": "Copy the OpenAI API contract exactly",
+      "why": "Existing client code works by changing one base URL, and the contract pushed me towards a single canonical result that every format renders from.",
+      "alternative": "A custom API designed around this service.",
+      "tradeoff": "The service inherits OpenAI's quirks, such as accepting a Whisper model name that doesn't actually select Whisper."
+    },
+    {
+      "decision": "Silence-aware chunking with one owner per word",
+      "why": "Cutting at silences avoids splitting words, the overlap is a safety margin, and the ownership rule means nothing is duplicated or lost at a seam. Both functions are pure, so they are easy to test.",
+      "alternative": "Fixed 30-second windows, or a neural voice-activity detector from day one.",
+      "tradeoff": "Energy-based silence detection is crude in noisy audio, so there is a capped hard cut as a fallback. The planner accepts any source of silences, so a better detector can drop in later."
+    },
+    {
+      "decision": "Treat a synchronous request as a queued job plus a wait",
+      "why": "Every job takes the same durable path. If the wait runs over budget, the caller gets a job ID to poll instead of an error.",
+      "alternative": "A separate in-process path that calls the engine directly for short files.",
+      "tradeoff": "Synchronous latency includes queue overhead, and the gateway holds a connection open while it waits."
+    },
+    {
+      "decision": "A slot pool as both concurrency limit and load balancer",
+      "why": "ONNX Runtime starts threads per session, and too many parallel requests thrash the cores and lower throughput. One pool bounds in-flight work and spreads it across instances.",
+      "alternative": "A reverse proxy in front of the engines, or unbounded concurrency.",
+      "tradeoff": "The bound is per worker process today, so a truly global limit needs a shared semaphore."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "Turning a 30-second model into an hours-long service",
+      "body": "Chunking was easy; the seams were the hard part. I combined silence-midpoint cuts, a short overlap and a deterministic rule for which chunk owns each word. Because both the planner and the stitcher are pure functions, I could work through edge cases in unit tests without ffmpeg or the model."
+    },
+    {
+      "title": "Not oversubscribing the CPU",
+      "body": "More parallel inference made things slower, not faster, once the ONNX threads started competing for cores. I pinned thread counts per engine instance, put every request through a slot pool, and wrote a benchmark that compares per-request and aggregate speed to decide between fewer large instances and more small ones."
+    },
+    {
+      "title": "One system for waiting callers and multi-hour jobs",
+      "body": "An SDK caller expects a transcript in the response, while a two-hour file can't be served that way. I put both on the same job model and split them by queue, with an explicit routing rule and a graceful downgrade to a job ID when a wait runs long."
+    },
+    {
+      "title": "Webhooks that are safe and dependable",
+      "body": "Tenant-supplied URLs are a risk, so they are checked against private network ranges when submitted and again at delivery. Every attempt is recorded, retries back off, and a delivery that keeps failing is marked dead where it can be seen instead of being dropped silently."
+    }
+  ],
+  "next": [
+    "A global concurrency limit shared across worker processes, with a reserved share for interactive traffic.",
+    "A neural voice-activity detector such as Silero for noisy audio; the chunk planner already accepts any source of silences.",
+    "Per-tenant fairness inside the batch queue, so one tenant's large backlog can't crowd out everyone else.",
+    "Metrics and a word-error-rate test set per language, so changes to the model or the chunking are measured instead of assumed."
+  ],
+  "lesson": "Most of the engineering in an ML service lives around the model, not inside it. Here the model was a fixed 30-second box, and the product was everything that made it safe to hand it hours of audio: deterministic seams, bounded concurrency and one durable path for every job. I'd carry two habits forward: keep the tricky logic in pure functions that are easy to test, and treat every capacity number as a hypothesis until it has been benchmarked on the real hardware."
+}

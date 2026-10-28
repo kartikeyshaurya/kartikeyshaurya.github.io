@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>FreightSense: One processing spine for every freight back-office check | Kartikey Shaurya</title>
+  <meta name="description" content="A multi-tenant platform that turns call transcripts, carrier invoices and receivables records into scored, explainable results, with a person reviewing exactly where the system is unsure.">
+  <meta name="author" content="Kartikey Shaurya">
+  <link rel="canonical" href="https://kartikeyshaurya.github.io/projects/freightsense.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="FreightSense: One processing spine for every freight back-office check | Kartikey Shaurya">
+  <meta property="og:description" content="A multi-tenant platform that turns call transcripts, carrier invoices and receivables records into scored, explainable results, with a person reviewing exactly where the system is unsure.">
+  <meta property="og:url" content="https://kartikeyshaurya.github.io/projects/freightsense.html">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="wrap util">
+    <ul>
+      <li>Chandigarh, India</li>
+    </ul>
+    <ul>
+      <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
+      <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a class="pdf" href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+    </ul>
+  </div>
+
+  <div class="wrap masthead masthead--slim">
+    <a class="logo" href="../index.html">Kartikey Shaurya</a>
+    <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
+  </div>
+
+  <nav class="primary" aria-label="Sections">
+    <ul>
+      <li><a href="../index.html">Front page</a></li>
+      <li><a href="../projects/index.html" class="is-active" aria-current="page">Projects</a></li>
+      <li><a href="../index.html#experience">Experience</a></li>
+      <li><a href="../index.html#about">About</a></li>
+      <li><a class="cta" href="../index.html#hire">Hire me</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" class="case">
+  <section class="wrap case-head">
+    <p class="kicker"><a href="index.html">Projects</a> <span class="fmt">Freight &amp; Logistics AI</span></p>
+    <h1>One processing spine for every freight back-office check</h1>
+    <p class="dek">A multi-tenant platform that turns call transcripts, carrier invoices and receivables records into scored, explainable results, with a person reviewing exactly where the system is unsure.</p>
+    <p class="byline">By <b>Kartikey Shaurya</b> · FreightSense · Internal product for freight back-office operations</p>
+  </section>
+
+  <div class="wrap case-grid">
+    <div class="case-body">
+
+      <section aria-labelledby="problem-h">
+        <h2 id="problem-h">The problem</h2>
+        <div class="prose"><p>Freight brokers run a lot of manual back-office work: reviewing broker and carrier calls for quality and compliance, checking carrier invoices against rate sheets, bills of lading and proofs of delivery, chasing late payers, and matching lump-sum payments to open invoices. Each check on its own is simple. &quot;Does subtotal plus tax equal the total?&quot; is not a hard question.</p>
+<p>The hard part is running dozens of them across three very different inputs (audio, documents and structured records) with audit, human review, tenancy, cost control and a path to retraining, without building a separate service for each one. I wrote a spec covering use cases across four domains: conversation quality, invoice validation, accounts receivable and accounts payable. Then I needed the system that runs all of them.</p></div>
+      </section>
+
+      <section aria-labelledby="approach-h">
+        <h2 id="approach-h">How I thought about it</h2>
+        <div class="prose prose--lead"><p>What I noticed first was that the use cases differed at the input and almost nowhere else. Every one of them needed to ingest something, process it, score it, maybe send it to a person, and feed the correction back. So instead of 41 pipelines I built one spine (ingest, process, score, review, analyse, retrain) and pushed all the variation into the workflow definition. Every step and every aggregate returns the same result shape: a tree of parent and child results. That gave me one persistence routine, one review queue, one analytics model and one UI renderer for every domain.</p>
+<p>The constraint that shaped the AI layer was trust in numbers. An LLM will read a blurry invoice confidently and approve it. So rules and exact decimal maths come first, and the LLM only handles the genuinely ambiguous cases, such as language judgement and messy line items. Some signals are gates, not weights: tampering or a duplicate blocks outright, missing fields force review, and an unreadable document stops before OCR even runs. OCR confidence discounts the score instead of being averaged in. <b>Anything between auto-approve and reject goes to a person.</b></p>
+<p>For the architecture I weighed one service per domain, which was my own original spec, against a modular monolith with task-typed worker pools. The domains shared the result contract, review, auth and tenancy, so separate services on day one would have multiplied deploys and contract versioning for one product with one UI. I kept the boundaries that matter as worker queues and modules with no cross-domain imports, so extracting a domain later is a deployment change, not a rewrite.</p>
+<p>The last principle was that the whole platform should run with zero external services. Every adapter has a deterministic stub, so tests and demos are reproducible and going live is a configuration change. The one place I refused a stub was speech-to-text: a fabricated transcript would silently poison every downstream quality score, so without real credentials it fails loudly instead. Deciding where a stub is safe turned out to be part of the design.</p></div>
+      </section>
+
+      <section aria-labelledby="built-h">
+        <h2 id="built-h">What I built</h2>
+        <ul class="ticks"><li>A single ingestion path for audio, documents and records, deduplicated by content hash per tenant, that queues a job and emits an event.</li>
+<li>An invoice validation pipeline: a quality gate, one shared OCR pass, a set of scored validators, hard gates for tampering, duplicates and missing fields, and a weighted composite with approve, review and reject bands that operations can tune without a deploy.</li>
+<li>Conversation quality detectors that run a cheap pattern pre-filter and only call the LLM when it fires, rolled up into an engagement quality score with hard-fail overrides for abuse and compliance breaches.</li>
+<li>Receivables and payables logic: collection-risk scoring with per-factor explanations, a dispute agent with a human gate on high-value cases, payment allocation, and a four-way match across invoice, rate sheet, bill of lading and proof of delivery.</li>
+<li>A human review queue where field corrections and approve or reject decisions are stored as feedback, which is the label stream for retraining.</li>
+<li>A visual pipeline composer whose canvas compiles to a LangGraph graph and actually executes, with human and wait blocks that pause durably and resume from a checkpoint.</li>
+<li>A copilot chat whose tools are scoped to the tenant and which can design pipelines, but only by staging proposals that a person confirms.</li>
+<li>A React operations console built on a custom design system with no UI library.</li></ul>
+      </section>
+
+      <section aria-labelledby="arch-h">
+        <h2 id="arch-h">How it fits together</h2>
+        <figure class="diagram">
+          <pre class="mermaid">flowchart TB
+  U[&quot;Operators and&lt;br/&gt;machine clients&quot;] --&gt; A[&quot;API&lt;br/&gt;(auth, roles, tenant)&quot;]
+  A --&gt; I[&quot;Ingestion spine&quot;]
+  I --&gt; D{&quot;Dispatch&quot;}
+  D --&gt;|&quot;inline&quot;| P[&quot;Single execution path&quot;]
+  D --&gt;|&quot;distributed&quot;| W[&quot;Task-typed worker pools&lt;br/&gt;STT, OCR, LLM, agents&quot;]
+  W --&gt; P
+  P --&gt; M[&quot;Domain pipelines&lt;br/&gt;invoices, calls, AR, AP&quot;]
+  P --&gt; G[&quot;Pipeline graph engine&lt;br/&gt;LangGraph&quot;]
+  M --&gt; R[&quot;Review queue&lt;br/&gt;and feedback&quot;]
+  G --&gt; R
+  P --&gt; DB[(&quot;PostgreSQL + pgvector&quot;)]
+  P --&gt; E[&quot;Event log&lt;br/&gt;and Kafka&quot;]
+  P --&gt; L[&quot;Model adapters&lt;br/&gt;or deterministic stubs&quot;]</pre>
+          <figcaption>Every input, whether audio, document or record, runs through the same spine and the same execution path, inline on a laptop or across worker pools in production.</figcaption>
+        </figure>
+        <dl class="components"><div><dt>Ingestion spine</dt><dd>Stores each upload once per tenant, creates a job and emits an event, whatever the input type.</dd></div>
+<div><dt>Execution path</dt><dd>One routine for jobs and one for pipeline runs, called identically inline or by workers, so the two modes cannot drift apart.</dd></div>
+<div><dt>Domain pipelines</dt><dd>Pure functions that take fields, transcript turns or records and return the shared result tree.</dd></div>
+<div><dt>Pipeline graph engine</dt><dd>Validates canvas definitions and compiles them to LangGraph, with sandboxed expressions and hard limits on loops, delegation depth and tokens.</dd></div>
+<div><dt>Review and feedback</dt><dd>Turns uncertain or failing results into review items and stores every human correction as a training label.</dd></div>
+<div><dt>Adapters</dt><dd>LLM, OCR, speech-to-text, storage and vector search behind small interfaces, each with a deterministic stub.</dd></div></dl>
+      </section>
+
+      <section aria-labelledby="flow-h">
+        <h2 id="flow-h">What happens to a carrier invoice</h2>
+        <ol class="steps"><li>A client uploads an invoice against a workflow, and the API checks that the workflow belongs to the caller&#x27;s tenant.</li>
+<li>The file is hashed and stored once per tenant. A job is queued and the client gets a job ID to poll.</li>
+<li>Processing runs inline or on a worker pool using the same code, and loads the tenant&#x27;s current weights, field schema and model.</li>
+<li>A quality gate runs first. An unreadable document stops here, before any OCR.</li>
+<li>One OCR pass feeds every validator. Tax and total checks use exact decimal maths, and the LLM handles only language-level judgement.</li>
+<li>The tampering, duplicate and missing-field gates run, then a weighted composite discounted by OCR confidence.</li>
+<li>The full result tree is saved with the weight-profile version and model used, so every verdict can be explained later.</li>
+<li>A clean pass completes the job. Anything uncertain or failing becomes a review item, and the reviewer&#x27;s corrections are stored as feedback.</li></ol>
+      </section>
+
+      <section aria-labelledby="dec-h">
+        <h2 id="dec-h">Decisions and trade-offs</h2>
+        <div class="decisions"><article class="decision">
+  <h3>A modular monolith with task-typed worker pools.</h3>
+  <dl>
+    <dt>Why</dt><dd>The four domains share the result contract, review, auth and tenancy. Separate services from day one would multiply deploys, tracing and contract versioning for one product with one UI.</dd>
+    <dt>Instead of</dt><dd>One service per domain, which was the original spec.</dd>
+    <dt>The cost</dt><dd>One deployable API is a shared blast radius. I offset that with no cross-domain imports and all communication through events and the shared result, so a domain can be extracted mechanically.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>One universal result tree for every step and aggregate.</h3>
+  <dl>
+    <dt>Why</dt><dd>One persistence routine, one review queue, one analytics model and one renderer cover every use case, and child results give per-validator lineage and explainability.</dd>
+    <dt>Instead of</dt><dd>Separate result tables per domain.</dd>
+    <dt>The cost</dt><dd>Domain-specific fields live in a JSON payload and are harder to query. Analytics read the common columns (verdict, score, confidence), so I accepted that.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Rules and exact maths first, the LLM only for the ambiguous band.</h3>
+  <dl>
+    <dt>Why</dt><dd>Exact checks are cheaper, auditable and deterministic where it matters. The LLM is used for language, and LLM calls are cached on a hash of their input.</dd>
+    <dt>Instead of</dt><dd>LLM extraction and judgement for everything.</dd>
+    <dt>The cost</dt><dd>Pattern pre-filters have recall gaps, and some detectors still need the LLM on every transcript.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Gates that block, separate from weights that score.</h3>
+  <dl>
+    <dt>Why</dt><dd>Some signals must never be averaged away. A tampered or duplicate invoice is a hard stop no matter how good the rest looks, and weights and thresholds live in a versioned profile that operations can tune.</dd>
+    <dt>Instead of</dt><dd>A single weighted score with thresholds.</dd>
+    <dt>The cost</dt><dd>More rules to explain, so every verdict carries a plain-language reason.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Stub by default, switch configuration to go live.</h3>
+  <dl>
+    <dt>Why</dt><dd>Tests and demos are hermetic and reproducible, new developers get a seeded demo tenant immediately, and heavy libraries load only when needed.</dd>
+    <dt>Instead of</dt><dd>Mocking per test, or requiring the full stack for development.</dd>
+    <dt>The cost</dt><dd>Stubs can hide integration bugs and their confidence values are synthetic. Speech-to-text is deliberately real-only, because a fake transcript would corrupt everything downstream.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>The copilot can only propose changes, never make them.</h3>
+  <dl>
+    <dt>Why</dt><dd>Its tools are bound to the tenant, so the model can never choose which tenant&#x27;s data it sees. Writes are staged as proposals that the UI commits through the normal path, so a confused or prompt-injected agent can&#x27;t change configuration.</dd>
+    <dt>Instead of</dt><dd>Give the agent create and update tools directly.</dd>
+    <dt>The cost</dt><dd>One more click for the user.</dd>
+  </dl>
+</article></div>
+      </section>
+
+      <section aria-labelledby="hard-h">
+        <h2 id="hard-h">The hard parts</h2>
+        <ul class="hard"><li><h3>Making many use cases feel like one product</h3><p>Voice, documents and records have nothing in common at the input. I pushed all the variability into the workflow definition and a single output contract, with exactly one place that knows about domains. Ingestion, review, analytics, export and webhooks were each written once.</p></li>
+<li><h3>Stopping garbage in, auto-approve out</h3><p>An LLM extractor will confidently read a blurry scan. I put a quality gate before OCR, made OCR confidence a multiplicative discount, made tampering and duplicates gates rather than weights, and made exact maths the authority on numbers. Uncertainty routes to a person instead of slipping through.</p></li>
+<li><h3>Keeping inline and distributed execution identical</h3><p>I wanted a laptop demo with only the API running and a production stack with separate worker pools, without two code paths drifting apart. A single execution path, a dispatch step that falls back to inline if the queue is unavailable, and tracing attached at that one path made the two modes behave and trace the same way.</p></li>
+<li><h3>Durable human steps inside a graph engine</h3><p>Human and wait blocks have to pause for minutes or days and survive restarts. I used LangGraph interrupts with a persistent checkpointer, let review items point at a pipeline run, and resume the run from its checkpoint when the reviewer decides. Wait timers are persisted, so a scheduled sweep wakes them rather than an in-memory timer.</p></li></ul>
+      </section>
+
+      <section aria-labelledby="next-h">
+        <h2 id="next-h">What I'd do next</h2>
+        <ul class="ticks ticks--plain"><li>Replace the heuristic stand-ins for tampering detection, collection scoring, payment allocation and document OCR with the models the spec calls for, behind the interfaces that already exist.</li>
+<li>Cross-job duplicate invoice detection, since double billing is the costliest fraud.</li>
+<li>A real retraining loop: datasets built from reviewer feedback, a growing golden set and an eval gate that blocks regressions.</li>
+<li>Confidence-driven model routing that escalates to a stronger model only below a threshold, with the escalation rate tracked as a cost metric.</li></ul>
+      </section>
+
+      <blockquote class="takeaway">
+        <p class="kicker">What I took away</p>
+        <p>Uncertainty needs a destination. The most useful thing I built was not any single detector but the rule that whatever the system isn&#x27;t sure about goes to a person, and that the person&#x27;s correction becomes training data. Deterministic checks own the numbers, the LLM owns the language, and one shared result contract lets every new use case inherit review, audit and analytics without extra work.</p>
+      </blockquote>
+    </div>
+
+    <aside class="case-side">
+      <dl class="facts">
+        <dt>Role</dt><dd>Sole engineer: product spec, architecture, backend, AI layer, frontend</dd>
+        <dt>Context</dt><dd>Internal product for freight back-office operations</dd>
+        <dt>Status</dt><dd>MVP</dd>
+        <dt>Stack</dt><dd>FastAPI, SQLAlchemy, PostgreSQL + pgvector, Celery, Redis, Kafka, LangGraph, OpenAI, Langfuse, React + TypeScript</dd>
+      </dl>
+      <nav class="toc" aria-label="On this page">
+        <p class="kicker">On this page</p>
+        <ul>
+          <li><a href="#problem-h">The problem</a></li>
+          <li><a href="#approach-h">How I thought about it</a></li>
+          <li><a href="#built-h">What I built</a></li>
+          <li><a href="#arch-h">Architecture</a></li>
+          <li><a href="#flow-h">Key flow</a></li>
+          <li><a href="#dec-h">Decisions</a></li>
+          <li><a href="#hard-h">Hard parts</a></li>
+        </ul>
+      </nav>
+    </aside>
+  </div>
+
+  <nav class="wrap pager" aria-label="More projects">
+    <a class="prev" href="tms-mcp-server.html"><span>Previous</span>A searchable map of a huge API, and a safe key</a><a class="next" href="carrier-vetting.html"><span>Next</span>Vetting carriers by the rulebook, with an LLM that can&#x27;t approve</a>
+  </nav>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <p class="logo">Kartikey Shaurya</p>
+      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="../index.html">Front page</a></li>
+        <li><a href="../projects/index.html">All projects</a></li>
+        <li><a href="../index.html#experience">Experience</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Elsewhere</h4>
+      <ul>
+        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+      </ul>
+    </div>
+    <p class="fine">
+      <span>© 2026 Kartikey Shaurya</span>
+      <span>Most client names and internal details are withheld. Architecture is shown at the component level.</span>
+    </p>
+  </div>
+</footer>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: "strict",
+    theme: "base",
+    flowchart: { curve: "basis", htmlLabels: true },
+    themeVariables: {
+      fontFamily: "Schibsted Grotesk, Helvetica Neue, Arial, sans-serif",
+      fontSize: "15px",
+      background: "#faedda",
+      primaryColor: "#fffdf9",
+      primaryBorderColor: "#1c1a17",
+      primaryTextColor: "#1c1a17",
+      lineColor: "#a51c30",
+      secondaryColor: "#faedda",
+      tertiaryColor: "#fffbf4",
+      clusterBkg: "#fffbf4",
+      clusterBorder: "#b9b8ad",
+      edgeLabelBackground: "#faedda"
+    }
+  });
+</script>
+</body>
+</html>

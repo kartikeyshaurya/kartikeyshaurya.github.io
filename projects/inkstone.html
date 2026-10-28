@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Inkstone: A PDF editor that actually deletes what it redacts | Kartikey Shaurya</title>
+  <meta name="description" content="Inkstone is an offline desktop PDF editor that finds sensitive data with Microsoft Presidio running locally and removes it from the file itself. No account, no upload, no telemetry.">
+  <meta name="author" content="Kartikey Shaurya">
+  <link rel="canonical" href="https://kartikeyshaurya.github.io/projects/inkstone.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Inkstone: A PDF editor that actually deletes what it redacts | Kartikey Shaurya">
+  <meta property="og:description" content="Inkstone is an offline desktop PDF editor that finds sensitive data with Microsoft Presidio running locally and removes it from the file itself. No account, no upload, no telemetry.">
+  <meta property="og:url" content="https://kartikeyshaurya.github.io/projects/inkstone.html">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="wrap util">
+    <ul>
+      <li>Chandigarh, India</li>
+    </ul>
+    <ul>
+      <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
+      <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a class="pdf" href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+    </ul>
+  </div>
+
+  <div class="wrap masthead masthead--slim">
+    <a class="logo" href="../index.html">Kartikey Shaurya</a>
+    <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
+  </div>
+
+  <nav class="primary" aria-label="Sections">
+    <ul>
+      <li><a href="../index.html">Front page</a></li>
+      <li><a href="../projects/index.html" class="is-active" aria-current="page">Projects</a></li>
+      <li><a href="../index.html#experience">Experience</a></li>
+      <li><a href="../index.html#about">About</a></li>
+      <li><a class="cta" href="../index.html#hire">Hire me</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" class="case">
+  <section class="wrap case-head">
+    <p class="kicker"><a href="index.html">Projects</a> <span class="fmt">Applied ML &amp; AI Infrastructure</span></p>
+    <h1>A PDF editor that actually deletes what it redacts</h1>
+    <p class="dek">Inkstone is an offline desktop PDF editor that finds sensitive data with Microsoft Presidio running locally and removes it from the file itself. No account, no upload, no telemetry.</p>
+    <p class="byline">By <b>Kartikey Shaurya</b> · Inkstone · Personal project</p>
+  </section>
+
+  <div class="wrap case-grid">
+    <div class="case-body">
+
+      <section aria-labelledby="problem-h">
+        <h2 id="problem-h">The problem</h2>
+        <div class="prose"><p>People who handle intake forms, HR files, medical records and legal paperwork need to remove ID numbers, card numbers and names before they share a PDF. The usual options are a cloud service, which means uploading the very data you are trying to protect, or a black box drawn over the text, which leaves the text selectable and extractable underneath.</p>
+<p>Many tools also overstate their confidence. A &#x27;credit card&#x27; reported at 99% that fails the card checksum is not a card, and a redaction tool that says otherwise is wrong about the one thing it has to get right.</p></div>
+      </section>
+
+      <section aria-labelledby="approach-h">
+        <h2 id="approach-h">How I thought about it</h2>
+        <div class="prose prose--lead"><p>I set four constraints before writing the editor: fully offline, usable with no Python installed, never modify the source file, and never report a number that was not measured. Almost every later decision traces back to one of those.</p>
+<p>The constraint that shaped everything was trust. Electron apps usually rely on a promise that they don&#x27;t call the network. I wanted the part holding the documents to be unable to. <b>So the renderer, which holds the PDF bytes, has no Node access and no network, with deny-by-default content and permission policies.</b> Every asset it needs (the PDF worker, fonts, the OCR model) is bundled. The main process has network access and makes exactly one optional request: a daily update check whose signature is verified before the manifest is even read.</p>
+<p>For detection I weighed hand-written rules, a bundled in-browser model and Presidio. Presidio won because its recognizers validate checksums and spaCy handles names and places, which regex cannot. I run it as a local Python sidecar that talks in JSON lines, so I can kill and restart it freely, and I wrote a pure JavaScript recognizer suite that takes over automatically if Python is missing or keeps failing. The UI always says which engine produced a finding. Matches above the confidence threshold are applied, and matches below it are flagged for review, never silently redacted.</p>
+<p>For export, the principle was that a redaction has to survive copy-paste, text extraction and a different viewer. That ruled out boxes and rasterising. I lex each page&#x27;s content stream and delete the text and image operators under each mark, strip metadata, flatten annotations, and only then paint a box as a backup. Any page I cannot parse with confidence is reported back to the user instead of being quietly passed.</p></div>
+      </section>
+
+      <section aria-labelledby="built-h">
+        <h2 id="built-h">What I built</h2>
+        <ul class="ticks"><li>AI Redact: Presidio with spaCy and checksum-validated recognizers, mapped to a handful of simple categories, plus custom keywords and regular expressions</li>
+<li>A dependency-free JavaScript fallback engine that takes over when the Python sidecar is unavailable</li>
+<li>Destructive export that removes glyph and image operators from the content stream, strips metadata and flattens annotations</li>
+<li>A full editor: drawing, highlights, text boxes, shapes, form filling, retyping text runs, search, text compare and signatures</li>
+<li>Page operations (insert, delete, rotate, crop, reorder) on a working copy with undo, so the original file is never written</li>
+<li>Merge, split, convert, compress, OCR with an invisible text layer, and password protection using the standard PDF AES-256 security handler</li>
+<li>A per-document audit log of every finding and action, and a signed update check that never installs anything</li>
+<li>Headless acceptance scripts that read exported files back with a separate parser and check, for example, that no redacted string survives</li></ul>
+      </section>
+
+      <section aria-labelledby="arch-h">
+        <h2 id="arch-h">How it fits together</h2>
+        <figure class="diagram">
+          <pre class="mermaid">flowchart LR
+  UI[&quot;Renderer&lt;br/&gt;React UI + pdf.js&lt;br/&gt;(no network, no Node)&quot;] --&gt; BR[&quot;Single bridge&quot;]
+  UI --&gt; OCR[&quot;Local OCR&quot;]
+  BR --&gt; MAIN[&quot;Main process&lt;br/&gt;request handlers&quot;]
+  MAIN --&gt; DET[&quot;Detection manager&quot;]
+  DET --&gt;|&quot;JSON lines&quot;| PY[&quot;Python sidecar&lt;br/&gt;Presidio + spaCy&quot;]
+  DET -.-&gt;|&quot;fallback&quot;| JS[&quot;Built-in JS&lt;br/&gt;recognizers&quot;]
+  MAIN --&gt; EXP[&quot;Export engine&lt;br/&gt;content-stream rewrite&quot;]
+  MAIN --&gt; PE[&quot;Page edits and tools&lt;br/&gt;(working copies)&quot;]
+  EXP --&gt; FS[(&quot;Local disk&lt;br/&gt;source read-only&quot;)]
+  PE --&gt; FS
+  MAIN --&gt; UPD[&quot;Signed update check&quot;]</pre>
+          <figcaption>The renderer holds the documents but cannot reach the network; the main process does the file work and makes one optional, signed request.</figcaption>
+        </figure>
+        <dl class="components"><div><dt>Renderer</dt><dd>Displays and edits documents with pdf.js, maps text offsets to on-page rectangles, and is sandboxed with no network and no Node.</dd></div>
+<div><dt>Bridge</dt><dd>The only path between the renderer and the main process, and it copies every buffer that crosses it.</dd></div>
+<div><dt>Detection manager</dt><dd>Splits documents into page-ordered chunks, sends them to the sidecar one at a time, times out stuck calls and falls back to the built-in engine.</dd></div>
+<div><dt>Python sidecar</dt><dd>Runs Presidio and spaCy locally and analyzes each page independently, so chunking can never change the results.</dd></div>
+<div><dt>Export engine</dt><dd>Deletes text and image operators under redaction marks, purges unreachable objects, flattens annotations and reports any page it could not clean.</dd></div>
+<div><dt>Working copies</dt><dd>Page edits and tools write to copies in app storage, and undo points at files instead of holding bytes in memory.</dd></div></dl>
+      </section>
+
+      <section aria-labelledby="flow-h">
+        <h2 id="flow-h">What happens when you redact a document</h2>
+        <ol class="steps"><li>You run AI Redact. The renderer collects each page&#x27;s text and asks the main process to analyze it for the chosen categories and keywords.</li>
+<li>The document is split into small, page-ordered chunks and sent to the local Presidio sidecar one chunk at a time.</li>
+<li>If the sidecar times out or crashes, it is killed so nothing queues behind it, and the built-in JavaScript engine analyzes that chunk instead.</li>
+<li>Findings come back with their type, score and recognizer. High-confidence matches become redaction marks, and low-confidence ones are flagged amber for review.</li>
+<li>On export, the main process reads the source file without writing to it and rewrites each page&#x27;s content stream, deleting the operators under every mark.</li>
+<li>It strips metadata, flattens annotations, paints the boxes last, and writes the result to the destination you chose.</li>
+<li>The app reports what it actually did, including any page it could not clean, and appends every action to the document&#x27;s audit log.</li></ol>
+      </section>
+
+      <section aria-labelledby="dec-h">
+        <h2 id="dec-h">Decisions and trade-offs</h2>
+        <div class="decisions"><article class="decision">
+  <h3>The renderer has the documents but no network</h3>
+  <dl>
+    <dt>Why</dt><dd>The part holding sensitive bytes cannot send them anywhere, even if a dependency misbehaves.</dd>
+    <dt>Instead of</dt><dd>A normal Electron app that simply chooses not to call the network.</dd>
+    <dt>The cost</dt><dd>Every asset has to be bundled at build time, including fonts, the PDF worker and the OCR model.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Delete content-stream operators instead of drawing boxes</h3>
+  <dl>
+    <dt>Why</dt><dd>A redaction has to survive copy-paste, text extraction and other viewers.</dd>
+    <dt>Instead of</dt><dd>Rasterising pages, which destroys text and accessibility, or annotation boxes, which anyone can remove.</dd>
+    <dt>The cost</dt><dd>I had to write a content-stream lexer and glyph geometry, and pages it cannot parse are reported instead of hidden.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>A Presidio sidecar with a JavaScript fallback</h3>
+  <dl>
+    <dt>Why</dt><dd>Checksum-validated recognizers and NER beat anything I would write by hand, and the fallback keeps the app usable without Python.</dd>
+    <dt>Instead of</dt><dd>JavaScript rules only, or a bundled in-browser NER model.</dd>
+    <dt>The cost</dt><dd>Packaging is harder, because the Python environment has to be created on the user&#x27;s machine, and the two engines must stay category-compatible.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Never write the source file</h3>
+  <dl>
+    <dt>Why</dt><dd>A redaction tool that changes your original on a crash is unacceptable, and undo that points at files keeps memory flat.</dd>
+    <dt>Instead of</dt><dd>Editing in place, or holding a full copy of the document per undo step.</dd>
+    <dt>The cost</dt><dd>Working copies use disk space, and undo fails gracefully with a message if a copy goes missing.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>A signed update check, no auto-installer</h3>
+  <dl>
+    <dt>Why</dt><dd>Without OS code signing, an auto-updater would be a remote code execution path inside a tool built for confidential documents.</dd>
+    <dt>Instead of</dt><dd>A standard Electron auto-updater.</dd>
+    <dt>The cost</dt><dd>Users update manually for now.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Honest limits as product decisions</h3>
+  <dl>
+    <dt>Why</dt><dd>Retyped text uses only the standard fonts, compare is text-only, and signatures are ink rather than cryptographic. The app never claims more than its export can guarantee.</dd>
+    <dt>Instead of</dt><dd>Claiming broader support and substituting quietly.</dd>
+    <dt>The cost</dt><dd>Some features look less capable on paper, and the README lists every limit.</dd>
+  </dl>
+</article></div>
+      </section>
+
+      <section aria-labelledby="hard-h">
+        <h2 id="hard-h">The hard parts</h2>
+        <ul class="hard"><li><h3>True redaction inside arbitrary PDFs</h3><p>Content streams nest forms, use many text operators and sometimes lack font metrics. I compute glyph boxes with sensible fallbacks, delete operators that overlap a mark enough or whose centre falls inside it, recurse into nested forms, and purge unreachable objects. The acceptance test extracts the exported text with a separate parser and checks that no redacted string survives.</p></li>
+<li><h3>The purge that deleted pages</h3><p>Bookmarks and annotations point back at pages, so a capped reachability walk could decide a page was unreachable and delete its content and fonts. I split it into an uncapped walk that marks everything the page tree keeps and a capped purge of the rest. The worst case is now some leftover bytes, never a lost page, and a very large synthetic document guards that in the tests.</p></li>
+<li><h3>A sidecar that must never hang the app</h3><p>On long documents a single analysis request could effectively never return. I added page-ordered chunking, size-based timeouts, kill-on-timeout and a restart budget, with the JavaScript fallback yielding regularly so the window stays responsive.</p></li>
+<li><h3>A buffer bug that corrupted small images</h3><p>Small files read from disk can come back as views into a shared memory pool, and the PDF library read from the start of the pool instead of the start of the file. I copy every image into its own buffer before handing it over, and the bridge copies every buffer that crosses it.</p></li></ul>
+      </section>
+
+      <section aria-labelledby="next-h">
+        <h2 id="next-h">What I'd do next</h2>
+        <ul class="ticks ticks--plain"><li>OS code signing and notarisation, then a signed in-app updater.</li>
+<li>A pool of sidecars working on page-disjoint chunks, and streaming export for very large documents.</li>
+<li>More OCR languages, and real cryptographic signatures alongside the visual stamp.</li>
+<li>A unit test layer for renderer logic, and CI running the acceptance scripts on all three operating systems.</li></ul>
+      </section>
+
+      <blockquote class="takeaway">
+        <p class="kicker">What I took away</p>
+        <p>Don&#x27;t trust the writer. The most useful habit from Inkstone was checking output by reading it back with a different tool, and reporting what the app could not do as plainly as what it did. For anything that handles sensitive data, an honest list of pages it couldn&#x27;t clean is worth more than a confident green tick.</p>
+      </blockquote>
+    </div>
+
+    <aside class="case-side">
+      <dl class="facts">
+        <dt>Role</dt><dd>Solo: design port, architecture, engineering, packaging</dd>
+        <dt>Context</dt><dd>Personal project</dd>
+        <dt>Status</dt><dd>Pre-1.0 desktop release</dd>
+        <dt>Stack</dt><dd>Electron, React, pdf.js, pdf-lib, Python, Microsoft Presidio, spaCy, tesseract.js, Node crypto, electron-builder</dd>
+      </dl>
+      <nav class="toc" aria-label="On this page">
+        <p class="kicker">On this page</p>
+        <ul>
+          <li><a href="#problem-h">The problem</a></li>
+          <li><a href="#approach-h">How I thought about it</a></li>
+          <li><a href="#built-h">What I built</a></li>
+          <li><a href="#arch-h">Architecture</a></li>
+          <li><a href="#flow-h">Key flow</a></li>
+          <li><a href="#dec-h">Decisions</a></li>
+          <li><a href="#hard-h">Hard parts</a></li>
+        </ul>
+      </nav>
+    </aside>
+  </div>
+
+  <nav class="wrap pager" aria-label="More projects">
+    <a class="prev" href="brain-response-studio.html"><span>Previous</span>Drop in a clip, watch a predicted brain respond</a>
+  </nav>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <p class="logo">Kartikey Shaurya</p>
+      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="../index.html">Front page</a></li>
+        <li><a href="../projects/index.html">All projects</a></li>
+        <li><a href="../index.html#experience">Experience</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Elsewhere</h4>
+      <ul>
+        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+      </ul>
+    </div>
+    <p class="fine">
+      <span>© 2026 Kartikey Shaurya</span>
+      <span>Most client names and internal details are withheld. Architecture is shown at the component level.</span>
+    </p>
+  </div>
+</footer>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: "strict",
+    theme: "base",
+    flowchart: { curve: "basis", htmlLabels: true },
+    themeVariables: {
+      fontFamily: "Schibsted Grotesk, Helvetica Neue, Arial, sans-serif",
+      fontSize: "15px",
+      background: "#faedda",
+      primaryColor: "#fffdf9",
+      primaryBorderColor: "#1c1a17",
+      primaryTextColor: "#1c1a17",
+      lineColor: "#a51c30",
+      secondaryColor: "#faedda",
+      tertiaryColor: "#fffbf4",
+      clusterBkg: "#fffbf4",
+      clusterBorder: "#b9b8ad",
+      edgeLabelBackground: "#faedda"
+    }
+  });
+</script>
+</body>
+</html>

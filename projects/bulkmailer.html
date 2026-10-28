@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>BulkMailer: Bulk email that keeps sending when its providers fail | Kartikey Shaurya</title>
+  <meta name="description" content="BulkMailer sends campaigns from a client&#x27;s own domains across multiple SMTP providers, tracks every recipient, and brings replies back into a threaded inbox. I was part of the team, and my share was mostly the reliability work underneath.">
+  <meta name="author" content="Kartikey Shaurya">
+  <link rel="canonical" href="https://kartikeyshaurya.github.io/projects/bulkmailer.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="BulkMailer: Bulk email that keeps sending when its providers fail | Kartikey Shaurya">
+  <meta property="og:description" content="BulkMailer sends campaigns from a client&#x27;s own domains across multiple SMTP providers, tracks every recipient, and brings replies back into a threaded inbox. I was part of the team, and my share was mostly the reliability work underneath.">
+  <meta property="og:url" content="https://kartikeyshaurya.github.io/projects/bulkmailer.html">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="wrap util">
+    <ul>
+      <li>Chandigarh, India</li>
+    </ul>
+    <ul>
+      <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
+      <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a class="pdf" href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+    </ul>
+  </div>
+
+  <div class="wrap masthead masthead--slim">
+    <a class="logo" href="../index.html">Kartikey Shaurya</a>
+    <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
+  </div>
+
+  <nav class="primary" aria-label="Sections">
+    <ul>
+      <li><a href="../index.html">Front page</a></li>
+      <li><a href="../projects/index.html" class="is-active" aria-current="page">Projects</a></li>
+      <li><a href="../index.html#experience">Experience</a></li>
+      <li><a href="../index.html#about">About</a></li>
+      <li><a class="cta" href="../index.html#hire">Hire me</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" class="case">
+  <section class="wrap case-head">
+    <p class="kicker"><a href="index.html">Projects</a> <span class="fmt">Platforms &amp; Products</span></p>
+    <h1>Bulk email that keeps sending when its providers fail</h1>
+    <p class="dek">BulkMailer sends campaigns from a client&#x27;s own domains across multiple SMTP providers, tracks every recipient, and brings replies back into a threaded inbox. I was part of the team, and my share was mostly the reliability work underneath.</p>
+    <p class="byline">By <b>Kartikey Shaurya</b> · BulkMailer · Creed Infotech, for internal and client sending</p>
+  </section>
+
+  <div class="wrap case-grid">
+    <div class="case-body">
+
+      <section aria-labelledby="problem-h">
+        <h2 id="problem-h">The problem</h2>
+        <div class="prose"><p>Sales, recruiting and operations teams across several client domains needed to send personalised campaigns and one-off bulk mail from their own addresses, see what happened to every recipient, and handle the replies, without paying per seat for a marketing suite or living inside Outlook.</p>
+<p>The screens were the easy part. The hard parts were deliverability and failure. Microsoft 365 rejects external mail between two addresses on the same domain as spoofing, even when authentication passes, and the big inbox providers now require one-click unsubscribe. Providers throttle or go down in the middle of a campaign. Every reply has to find the exact send that produced it. And mirroring real Outlook mailboxes means never losing a change notification.</p></div>
+      </section>
+
+      <section aria-labelledby="approach-h">
+        <h2 id="approach-h">How I thought about it</h2>
+        <div class="prose prose--lead"><p>I was part of the team that built BulkMailer. My part was the layer that decides whether mail actually leaves and whether anything gets lost: high-availability hardening, the durable Outlook inbound pipeline, send-rate limiting and provider warmup, partitioning for the log tables, Outlook sync and sign-in fixes, and the architecture, database and reliability documentation.</p>
+<p>The first thing I looked for was where work could quietly disappear. Some sends ran in-process, so a restart could strand them. Scheduled jobs started in every API worker, so health probes doubled and Outlook syncs raced each other into duplicate inbox rows. Outlook notifications had to be acknowledged within seconds, and anything in flight during a restart was gone. Each of these was a place where the system said yes and then forgot.</p>
+<p>The principle I held to in my changes was to separate &#x27;this message failed&#x27; from &#x27;this is not the message&#x27;s fault&#x27;. An open circuit breaker, a rate limit or a warmup cap should delay a message, not spend its retry budget. So the send path counts failures and deferrals separately, retries wait in timed queues instead of sleeping threads, and only real failures move a message toward the dead-letter queue. Before anything is marked failed, the system checks whether it actually went out.</p>
+<p>On the inbound side I put a durable queue between Microsoft&#x27;s notification and the work of fetching the message, so the webhook can acknowledge at once and the fetch can retry safely. <b>Coordination state such as breakers, leases and rate windows lives in Redis, and every check on the send path fails open, so a Redis blip slows mail down instead of stopping it.</b></p></div>
+      </section>
+
+      <section aria-labelledby="built-h">
+        <h2 id="built-h">What I built</h2>
+        <ul class="ticks"><li>I added leader election for scheduled jobs, so cron work runs once across all API replicas, with a fallback for when the coordination store is down</li>
+<li>I built the durable Outlook inbound pipeline: webhook to queue to idempotent fetch and upsert, with a two-stage dead-letter path that ends in a table an admin can review and retry</li>
+<li>I added send-rate limiting and linear warmup ramps per provider, enforced consistently across every worker</li>
+<li>I set up monthly partitioning with automatic provisioning and retention for the append-only log tables</li>
+<li>I fixed Outlook sync and sign-in so one failed token refresh no longer silently stopped real-time mail</li>
+<li>I hardened the deployment for availability: API replicas behind a failover load balancer, a one-shot migration step, and an HA runbook that sets the order for upgrading each datastore</li>
+<li>The team-built core I worked within: queued campaign sends, round-robin provider routing with shared circuit breakers, a threaded reply inbox, and an Outlook-style mailbox view</li></ul>
+      </section>
+
+      <section aria-labelledby="arch-h">
+        <h2 id="arch-h">How it fits together</h2>
+        <figure class="diagram">
+          <pre class="mermaid">flowchart LR
+  UI[&quot;React app&quot;] --&gt; LB[&quot;Load balancer&quot;]
+  EXT[&quot;External systems&lt;br/&gt;(API, embedded inbox)&quot;] --&gt; LB
+  LB --&gt; API[&quot;API replicas&lt;br/&gt;(FastAPI)&quot;]
+  API --&gt; PG[(&quot;PostgreSQL&lt;br/&gt;via pgbouncer&quot;)]
+  API --&gt; RD[(&quot;Redis&lt;br/&gt;breakers, leases, limits&quot;)]
+  API --&gt;|&quot;send jobs&quot;| MQ[&quot;RabbitMQ&quot;]
+  MQ --&gt; SC[&quot;Send consumers&quot;]
+  SC --&gt; SMTP[&quot;SMTP providers&lt;br/&gt;(several)&quot;]
+  SC --&gt; GR[&quot;Microsoft Graph&quot;]
+  GR --&gt;|&quot;change notifications&quot;| API
+  MQ --&gt; IC[&quot;Inbound consumers&quot;]
+  IC --&gt; GR
+  IC --&gt; PG</pre>
+          <figcaption>The API replicas validate and enqueue; consumers do the sending and syncing, coordinated through shared state in Redis.</figcaption>
+        </figure>
+        <dl class="components"><div><dt>API replicas</dt><dd>Validate requests, write one log row per recipient, and publish jobs. Scheduled jobs run only on the elected leader.</dd></div>
+<div><dt>RabbitMQ</dt><dd>Durable send, retry, wait and dead-letter queues, where timed wait queues provide backoff without any consumer sleeping.</dd></div>
+<div><dt>Send consumers</dt><dd>Route each message across the providers a domain allows, skipping any that are open-circuited, rate-limited or at their warmup cap.</dd></div>
+<div><dt>Redis</dt><dd>Holds circuit-breaker state, the round-robin cursor, warmup counters, rate windows and the scheduler lease, and every read on the send path fails open.</dd></div>
+<div><dt>Inbound consumers</dt><dd>Fetch changed Outlook messages after a notification and upsert them idempotently into the mailbox mirror.</dd></div>
+<div><dt>PostgreSQL</dt><dd>The system of record, with one row per recipient per send and time-partitioned log tables.</dd></div></dl>
+      </section>
+
+      <section aria-labelledby="flow-h">
+        <h2 id="flow-h">What happens when a campaign goes out</h2>
+        <ol class="steps"><li>The API checks ownership and creates one log row per recipient, each with its own reply address, before anything is sent.</li>
+<li>Suppressed addresses are filtered out, and one job per recipient is published, with confirmation that the queue accepted it.</li>
+<li>A send consumer picks the path. Same-domain mail from a connected Outlook sender goes through Microsoft Graph as a real internal message. Everything else rotates across the SMTP providers that domain allows.</li>
+<li>On success the row is marked delivered, and the provider&#x27;s breaker and warmup count are updated.</li>
+<li>A hard failure goes to a short timed wait queue with its retry count raised. A deferral, where no provider could be tried, waits longer without using up a retry.</li>
+<li>After the retry limit the message lands in the dead-letter queue, which checks whether the mail really went out before marking it failed.</li>
+<li>When the recipient replies, the reply address identifies the original send, the reply is threaded under it, and it appears in the sender&#x27;s browser in real time.</li></ol>
+      </section>
+
+      <section aria-labelledby="dec-h">
+        <h2 id="dec-h">Decisions and trade-offs</h2>
+        <div class="decisions"><article class="decision">
+  <h3>Count deferrals separately from failures</h3>
+  <dl>
+    <dt>Why</dt><dd>An open breaker or a rate limit is not the message&#x27;s fault. Counting it as a retry would push deliverable mail into the dead-letter queue during any provider blip.</dd>
+    <dt>Instead of</dt><dd>A single retry counter.</dd>
+    <dt>The cost</dt><dd>A deferred message can wait a long time before giving up, which suits bulk mail but would not suit transactional mail.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Backoff by parking messages in timed queues</h3>
+  <dl>
+    <dt>Why</dt><dd>The wait is the queue itself, so no consumer thread ever sleeps and the retry consumer stays cheap.</dd>
+    <dt>Instead of</dt><dd>Sleeping inside the consumer, or a delayed-message plugin.</dd>
+    <dt>The cost</dt><dd>One queue per delay step, so backoff granularity is fixed by the set of queues.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Round-robin across providers with a per-domain allowlist</h3>
+  <dl>
+    <dt>Why</dt><dd>It spreads volume and sender reputation, and lets one client domain opt into a provider without changing everyone else&#x27;s routing.</dd>
+    <dt>Instead of</dt><dd>A fixed primary provider with a fallback chain.</dd>
+    <dt>The cost</dt><dd>Domains without an allowlist still depend on one default provider, which is a known single point of failure.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Plain SMTP instead of provider HTTP APIs</h3>
+  <dl>
+    <dt>Why</dt><dd>SMTP keeps our own message ID, which anchors reply threading and safe retries. Provider APIs replace it with their own.</dd>
+    <dt>Instead of</dt><dd>Each provider&#x27;s native send API.</dd>
+    <dt>The cost</dt><dd>We handle SMTP quirks ourselves, including never blindly retrying after the message body has been sent.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>A leader-elected scheduler inside the API</h3>
+  <dl>
+    <dt>Why</dt><dd>Jobs were running once per worker. A short lease in Redis, renewed while the leader is healthy, with a file-lock fallback, fixed that with a small change and no new service.</dd>
+    <dt>Instead of</dt><dd>A dedicated scheduler container.</dd>
+    <dt>The cost</dt><dd>Scheduler health is tied to API health, and failover takes up to one lease period.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Partition the append-only logs, keep the main send log whole</h3>
+  <dl>
+    <dt>Why</dt><dd>Lookups on the main send log are by globally unique IDs, which a time partition would turn into a scan across every partition. Append-only logs are queried by time, so they get monthly partitions with retention.</dd>
+    <dt>Instead of</dt><dd>Partition every log table by date.</dd>
+    <dt>The cost</dt><dd>The main table keeps growing until it gets an ID-based archive scheme.</dd>
+  </dl>
+</article></div>
+      </section>
+
+      <section aria-labelledby="hard-h">
+        <h2 id="hard-h">The hard parts</h2>
+        <ul class="hard"><li><h3>Same-domain mail rejected as spoofing</h3><p>Microsoft 365 bounced mail between two addresses on a client&#x27;s own domain even with authentication aligned. The send path routes that mail through Microsoft Graph so it becomes a genuine internal message. That brought its own guards: large recipient lists downgrade to SMTP, each mailbox has a send budget to respect Graph throttling, and an ambiguous timeout triggers a lookup before any resend.</p></li>
+<li><h3>Cron jobs running in every worker</h3><p>The scheduler started in every API process, which doubled health probes and raced Outlook syncs into duplicate inbox rows. I added lease-based leader election with a fallback, and moved migrations into a one-shot step so the replicas stop racing each other on schema changes.</p></li>
+<li><h3>Not losing Outlook notifications</h3><p>Microsoft expects a fast acknowledgement, and an API restart lost whatever was in flight. I put a durable queue between the webhook and the message fetch, scaled out the consumers, and added a two-stage dead-letter path. The second stage drains into the database, because one stuck message at the head of a queue would otherwise block everything behind it.</p></li>
+<li><h3>Retries fighting the queue&#x27;s own expiry</h3><p>A load audit found that messages expiring in a queue kept a zero retry count and could cycle forever, and that unparseable jobs could loop. Backoff moved to timed wait queues, the send consumer became the only place counts increase, retries and deferrals both got hard caps, and unparseable jobs now go straight to the dead queue. The one remaining edge case is documented, not hidden.</p></li></ul>
+      </section>
+
+      <section aria-labelledby="next-h">
+        <h2 id="next-h">What I'd do next</h2>
+        <ul class="ticks ticks--plain"><li>Move the remaining in-process interactive sends onto the durable queue and retire the manual recovery script.</li>
+<li>Track true delivery at campaign level, and add delivery telemetry for every provider.</li>
+<li>Backups with point-in-time recovery and a tested restore, then replicated datastores in the order the HA runbook sets out.</li>
+<li>Queue-depth and job-age metrics with alerts.</li></ul>
+      </section>
+
+      <blockquote class="takeaway">
+        <p class="kicker">What I took away</p>
+        <p>Most lost work hides in the gap between &#x27;accepted&#x27; and &#x27;done&#x27;. The fixes that mattered here were small and unglamorous: a lease, a durable queue in front of a webhook, a second counter. I now look for every place a system acknowledges something before it is safe, and I write down the cases I have not closed yet instead of hoping nobody finds them.</p>
+      </blockquote>
+    </div>
+
+    <aside class="case-side">
+      <dl class="facts">
+        <dt>Role</dt><dd>Part of the team: reliability, high availability, Outlook sync, documentation</dd>
+        <dt>Context</dt><dd>Creed Infotech, for internal and client sending</dd>
+        <dt>Status</dt><dd>In production</dd>
+        <dt>Stack</dt><dd>Python, FastAPI, PostgreSQL, pgbouncer, RabbitMQ, Redis, MinIO, React, TypeScript, Microsoft Graph</dd>
+      </dl>
+      <nav class="toc" aria-label="On this page">
+        <p class="kicker">On this page</p>
+        <ul>
+          <li><a href="#problem-h">The problem</a></li>
+          <li><a href="#approach-h">How I thought about it</a></li>
+          <li><a href="#built-h">What I built</a></li>
+          <li><a href="#arch-h">Architecture</a></li>
+          <li><a href="#flow-h">Key flow</a></li>
+          <li><a href="#dec-h">Decisions</a></li>
+          <li><a href="#hard-h">Hard parts</a></li>
+        </ul>
+      </nav>
+    </aside>
+  </div>
+
+  <nav class="wrap pager" aria-label="More projects">
+    <a class="prev" href="relay-fleet.html"><span>Previous</span>A commute platform that can explain every ride it books</a><a class="next" href="project-manager-mcp.html"><span>Next</span>A project tracker your AI assistant can work inside, safely</a>
+  </nav>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <p class="logo">Kartikey Shaurya</p>
+      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="../index.html">Front page</a></li>
+        <li><a href="../projects/index.html">All projects</a></li>
+        <li><a href="../index.html#experience">Experience</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Elsewhere</h4>
+      <ul>
+        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+      </ul>
+    </div>
+    <p class="fine">
+      <span>© 2026 Kartikey Shaurya</span>
+      <span>Most client names and internal details are withheld. Architecture is shown at the component level.</span>
+    </p>
+  </div>
+</footer>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: "strict",
+    theme: "base",
+    flowchart: { curve: "basis", htmlLabels: true },
+    themeVariables: {
+      fontFamily: "Schibsted Grotesk, Helvetica Neue, Arial, sans-serif",
+      fontSize: "15px",
+      background: "#faedda",
+      primaryColor: "#fffdf9",
+      primaryBorderColor: "#1c1a17",
+      primaryTextColor: "#1c1a17",
+      lineColor: "#a51c30",
+      secondaryColor: "#faedda",
+      tertiaryColor: "#fffbf4",
+      clusterBkg: "#fffbf4",
+      clusterBorder: "#b9b8ad",
+      edgeLabelBackground: "#faedda"
+    }
+  });
+</script>
+</body>
+</html>

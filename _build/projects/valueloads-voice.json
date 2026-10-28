@@ -1,0 +1,150 @@
+{
+  "slug": "valueloads-voice",
+  "theme": "freight",
+  "order": 3,
+  "title": "ValueLoads AI Voice Platform",
+  "headline": "The agent that answers the phone and leaves clean data behind",
+  "dek": "A multi-tenant platform where a business designs an AI phone agent in a dashboard, attaches a Twilio number, and gets a transcript, a recording and a structured lead record after every call.",
+  "summary": "Multi-tenant AI phone agents on Twilio and Pipecat, with prepaid billing, campaigns and post-call extraction.",
+  "client": "Creed Infotech, for ValueLoads",
+  "role": "Lead engineer: backend, voice runtime, deployment, security and latency audits",
+  "status": "Pilot",
+  "stack": [
+    "Django",
+    "Django REST Framework",
+    "FastAPI",
+    "Pipecat",
+    "Twilio",
+    "OpenAI",
+    "Deepgram",
+    "Cartesia",
+    "PostgreSQL",
+    "React"
+  ],
+  "problem": [
+    "People who work the phones at freight brokerages and on sales teams spend much of the day on repetitive calls: carriers asking about loads, leads that need qualifying, follow-ups that never get logged. The calls follow a pattern, but every business has its own script, its own data and its own idea of a good outcome.",
+    "Off-the-shelf voice bots handle the talking and little else. They are hard to customise per business, hard to bill per tenant, and they leave nothing structured behind once the caller hangs up. ValueLoads wanted a platform where each business could design its own agent, pay only for what it used, and get a usable lead record out of every call."
+  ],
+  "approach": [
+    "The first thing I noticed was that the platform had two workloads that behave nothing alike. The dashboard is ordinary request and response CRUD: tenants, agents, campaigns, billing. A live call is a long-running audio pipeline that must never block, because a 200 millisecond stall is something the caller hears. In one process, a slow analytics query could stutter a conversation. So I split it into a Django control plane that owns configuration and a separate FastAPI and Pipecat voice service that owns calls, with one database, separate schemas and a narrow admin API between them.",
+    "The constraint that shaped everything else was money moving in real time. Two calls for the same tenant can arrive at the same moment, and they must not both slip past an empty wallet or a concurrency cap. I put the billing check at the very start of the call, before Twilio opens any audio, inside one transaction that locks that tenant's billing record. If anything is uncertain it denies the call, which costs nothing. Charging happens after the call against an append-only ledger that can only record a call once, so retried webhooks can never double-charge, and a watchdog ends calls politely when the balance runs out.",
+    "For the conversation itself I weighed a single speech-to-speech model against a cascade of speech-to-text, an LLM with tools, and text-to-speech. Speech-to-speech is simpler and can be faster, but tenants wanted to choose their voices and providers, and I wanted a transcript and a tool log for every turn so I could extract data afterwards. I chose the cascade and accepted that turn-taking and latency would become my problem.",
+    "That trade-off came due. Calls felt slow and nothing in the logs said why, so before tuning anything I added per-turn and per-stage latency telemetry. Then I read the framework source inside the running container and found a turn-detection default that waited about two seconds on every turn whenever the speech-to-text provider did not mark transcripts as final. The principle I took from it: <b>any behaviour that adds seconds to a call has to be explicit in my code</b>, not inherited from someone else's release notes."
+  ],
+  "built": [
+    "A Django control plane for tenants, roles, agents with versioned prompts, phone numbers, tools, leads, outbound campaigns and a prepaid billing ledger.",
+    "A real-time voice service on FastAPI and Pipecat that streams Twilio audio through speech-to-text, an LLM with tool calls, and text-to-speech, with providers chosen per agent and automatic failover for speech output.",
+    "An agent designer, including a feature that uses an LLM to turn a free-text call script into a flow diagram.",
+    "Outbound campaigns with per-tenant and per-campaign concurrency caps, calling-hour windows in the campaign's timezone, retries on no-answer, and answering-machine detection that doesn't delay the greeting.",
+    "A config-driven tool system so a tenant can expose its own REST API to the agent without a code change, alongside a built-in fuzzy broker lookup.",
+    "A post-call pipeline that stores the recording and transcript, runs structured extraction for the agent's own fields plus a standard purpose, next action and urgency, sends a summary email, and creates or updates a lead.",
+    "Browser test calls over WebRTC so admins can try an agent without a phone, and a browser softphone for human sales reps that never touches AI billing.",
+    "A separate load search service built to back the agent's load lookups. Connecting the two is the next step: the voice side has a placeholder for that tool today."
+  ],
+  "architecture": {
+    "mermaid": "flowchart LR\n  A[\"Caller\"] --> B[\"Twilio Voice\"]\n  U[\"Dashboard<br/>(admins, sales)\"] --> N[\"Reverse proxy<br/>(TLS)\"]\n  B --> N\n  N --> C[\"Control plane<br/>Django\"]\n  N --> V[\"Voice service<br/>FastAPI + Pipecat\"]\n  C -->|\"provision agent\"| V\n  V --> G[\"Billing gate\"]\n  G --> D[(\"PostgreSQL\")]\n  C --> D\n  V --> M[\"Speech-to-text, LLM,<br/>text-to-speech\"]\n  V --> T[\"Agent tools<br/>(tenant APIs)\"]\n  V --> P[\"Post-call jobs\"]\n  P --> S[(\"Object storage<br/>recordings, transcripts\")]\n  P -->|\"call events\"| C",
+    "caption": "A Django control plane owns configuration and money; a separate Pipecat voice service owns live calls, and they share one database through separate schemas.",
+    "components": [
+      {
+        "name": "Control plane",
+        "desc": "Django app that owns tenants, roles, agents, campaigns, billing and analytics, and is the source of truth for configuration."
+      },
+      {
+        "name": "Voice service",
+        "desc": "One Pipecat pipeline per call, with the channel (phone or WebRTC) and the speech provider hidden behind small factories."
+      },
+      {
+        "name": "Billing gate",
+        "desc": "A single locking transaction at call setup that checks balance, block status and concurrency before any audio flows, and fails closed."
+      },
+      {
+        "name": "Provisioner",
+        "desc": "Turns a saved agent into the voice service's runtime config and binds the Twilio number, with a retryable status if any step fails."
+      },
+      {
+        "name": "Tool registry",
+        "desc": "Built-in tools plus a generic config-driven REST tool, with tenant secrets encrypted at rest and outbound requests restricted to safe destinations."
+      },
+      {
+        "name": "Post-call jobs",
+        "desc": "Bounded background work that uploads artifacts, runs extraction and sends call events without ever blocking the audio loop."
+      }
+    ]
+  },
+  "flow": {
+    "title": "What happens on an inbound call",
+    "steps": [
+      "A caller dials a tenant's number and Twilio asks the voice service what to do. The service verifies that the request really came from Twilio.",
+      "The billing gate locks that tenant's billing record, checks balance, block status and concurrent calls, and registers the call. If anything fails, the call is rejected before audio starts.",
+      "Twilio opens a media stream. The service rechecks the session, records the call start and builds the pipeline.",
+      "The greeting plays, from a cache when possible, and the caller's first \"Hello?\" is not allowed to cancel it.",
+      "Each turn runs voice activity detection, an explicit end-of-turn rule, speech-to-text, the LLM (which may call tools) and text-to-speech. If the caller interrupts, buffered audio is flushed.",
+      "A watchdog checks the remaining balance during the call and ends it politely if it is about to run out.",
+      "After hang-up, a background job stores the recording and transcript, runs structured extraction and sends call events to the control plane.",
+      "The control plane charges the call exactly once against the ledger, releases the concurrency slot and creates or updates the lead."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "Split the platform into a Django control plane and a FastAPI and Pipecat voice plane.",
+      "why": "Dashboard CRUD and live audio fail and scale differently. Keeping them apart means a slow dashboard request can never stall a call, and the voice plane can be scaled and placed on its own.",
+      "alternative": "One Django app with async extensions, or one FastAPI app for everything.",
+      "tradeoff": "Two config models to keep in sync. I handled that with an explicit provisioner, a retryable provisioning status and a bulk re-provision command."
+    },
+    {
+      "decision": "Check billing before any media starts, and fail closed.",
+      "why": "Simultaneous calls must not both pass a concurrency cap or an empty wallet. Rejecting a call at setup costs nothing, and locking per tenant keeps contention local to that tenant.",
+      "alternative": "Check the balance when the call-started event arrives, or count calls in memory.",
+      "tradeoff": "A few extra queries on call setup, plus backstops: a recheck when the stream opens, cleanup that always runs on disconnect, and scheduled jobs that release stale slots and catch uncharged calls."
+    },
+    {
+      "decision": "An idempotent, append-only ledger, charged after the call.",
+      "why": "Webhooks get retried. A uniqueness guarantee is the simplest way to charge each call exactly once, and an append-only ledger gives platform staff an audit trail.",
+      "alternative": "A mutable balance with no ledger, or charging per minute during the call.",
+      "tradeoff": "Because charging is post-call, a mid-call watchdog is still needed, and a tenant can go slightly over within its safety margin."
+    },
+    {
+      "decision": "A cascaded speech-to-text, LLM and text-to-speech pipeline instead of one speech-to-speech model.",
+      "why": "Tenants choose their voice and provider, every turn has a transcript and tool calls I can log and extract from, and swapping a provider is a config change.",
+      "alternative": "A realtime speech-to-speech model.",
+      "tradeoff": "More hops means more latency to manage, and turn-taking becomes my responsibility."
+    },
+    {
+      "decision": "Explicit turn-taking settings per agent instead of framework defaults.",
+      "why": "The framework silently picked an end-of-turn strategy that added seconds per turn with some speech providers. Behaviour that costs the caller that much time belongs in my configuration.",
+      "alternative": "Leave the defaults, or use one global setting.",
+      "tradeoff": "More knobs per agent, and agents have to be re-provisioned when a default changes."
+    },
+    {
+      "decision": "A generic, config-driven tool so tenants can connect their own APIs.",
+      "why": "Every tenant has different systems. Describing a tool as configuration means no deploy per tenant, and the LLM only ever fills in declared parameter values while the destination and credentials stay fixed.",
+      "alternative": "A hand-written tool module per customer.",
+      "tradeoff": "It is effectively an outbound request that tenants control, so it needs strict limits on where it can reach and trimming so a large response can't flood the model's context."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "Two seconds of dead air on every turn",
+      "body": "Calls felt sluggish and nothing explained it. I added per-stage latency telemetry first, then traced the delay to a framework default that waited for a transcript the speech provider never marked as final. I made turn detection an explicit per-agent setting, added a speech-to-text provider that finalises transcripts, and made streaming speech output the default."
+    },
+    {
+      "title": "Outbound calls that kept saying hello",
+      "body": "People answer the phone by talking, and with interruptions enabled every \"Hello?\" cancelled the greeting before it played. I muted caller input until the first bot utterance finishes and added a greeting cache keyed on every input that affects the audio, so there is no invalidation logic to get wrong."
+    },
+    {
+      "title": "Billing that stays correct when things crash",
+      "body": "Concurrency slots could leak when a pipeline died without a clean disconnect. I made cleanup defensive at several layers: an unconditional release on exit, an idempotent ledger and scheduled reconciliation jobs. The watchdog only ends a call on a confirmed low balance, never on a single database error."
+    },
+    {
+      "title": "Failover that silently did nothing",
+      "body": "The original speech-output fallback only worked with providers that return audio in one response. With a streaming provider as primary it dropped the fallback chain without any error, so changing the default would have quietly removed failover. I replaced it with Pipecat's built-in service switcher using a failover strategy."
+    }
+  ],
+  "next": [
+    "Connect the load search service to the agent's load lookup tool, so carriers can ask about available loads mid-call.",
+    "Move post-call work and webhooks onto a durable queue with an outbox, so a voice process crash can't lose a call's events.",
+    "Run the voice plane closer to the telephony and model providers, across several workers.",
+    "Add a knowledge base the agent can search as a tool, using pgvector in the same Postgres."
+  ],
+  "lesson": "The model was the easy part. What made this a product was everything around it: a billing check that holds under concurrency, cleanup that works when the happy path doesn't, and latency I can measure stage by stage. I now instrument before I tune, and I turn any framework default that costs the user time into an explicit setting in my own code."
+}

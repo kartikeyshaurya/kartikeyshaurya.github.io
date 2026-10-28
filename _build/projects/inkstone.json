@@ -1,0 +1,149 @@
+{
+  "slug": "inkstone",
+  "theme": "ml",
+  "order": 5,
+  "title": "Inkstone",
+  "headline": "A PDF editor that actually deletes what it redacts",
+  "dek": "Inkstone is an offline desktop PDF editor that finds sensitive data with Microsoft Presidio running locally and removes it from the file itself. No account, no upload, no telemetry.",
+  "summary": "Offline desktop PDF editor with local AI redaction that removes data from the file, not just hides it.",
+  "client": "Personal project",
+  "role": "Solo: design port, architecture, engineering, packaging",
+  "status": "Pre-1.0 desktop release",
+  "stack": [
+    "Electron",
+    "React",
+    "pdf.js",
+    "pdf-lib",
+    "Python",
+    "Microsoft Presidio",
+    "spaCy",
+    "tesseract.js",
+    "Node crypto",
+    "electron-builder"
+  ],
+  "problem": [
+    "People who handle intake forms, HR files, medical records and legal paperwork need to remove ID numbers, card numbers and names before they share a PDF. The usual options are a cloud service, which means uploading the very data you are trying to protect, or a black box drawn over the text, which leaves the text selectable and extractable underneath.",
+    "Many tools also overstate their confidence. A 'credit card' reported at 99% that fails the card checksum is not a card, and a redaction tool that says otherwise is wrong about the one thing it has to get right."
+  ],
+  "approach": [
+    "I set four constraints before writing the editor: fully offline, usable with no Python installed, never modify the source file, and never report a number that was not measured. Almost every later decision traces back to one of those.",
+    "The constraint that shaped everything was trust. Electron apps usually rely on a promise that they don't call the network. I wanted the part holding the documents to be unable to. <b>So the renderer, which holds the PDF bytes, has no Node access and no network, with deny-by-default content and permission policies.</b> Every asset it needs (the PDF worker, fonts, the OCR model) is bundled. The main process has network access and makes exactly one optional request: a daily update check whose signature is verified before the manifest is even read.",
+    "For detection I weighed hand-written rules, a bundled in-browser model and Presidio. Presidio won because its recognizers validate checksums and spaCy handles names and places, which regex cannot. I run it as a local Python sidecar that talks in JSON lines, so I can kill and restart it freely, and I wrote a pure JavaScript recognizer suite that takes over automatically if Python is missing or keeps failing. The UI always says which engine produced a finding. Matches above the confidence threshold are applied, and matches below it are flagged for review, never silently redacted.",
+    "For export, the principle was that a redaction has to survive copy-paste, text extraction and a different viewer. That ruled out boxes and rasterising. I lex each page's content stream and delete the text and image operators under each mark, strip metadata, flatten annotations, and only then paint a box as a backup. Any page I cannot parse with confidence is reported back to the user instead of being quietly passed."
+  ],
+  "built": [
+    "AI Redact: Presidio with spaCy and checksum-validated recognizers, mapped to a handful of simple categories, plus custom keywords and regular expressions",
+    "A dependency-free JavaScript fallback engine that takes over when the Python sidecar is unavailable",
+    "Destructive export that removes glyph and image operators from the content stream, strips metadata and flattens annotations",
+    "A full editor: drawing, highlights, text boxes, shapes, form filling, retyping text runs, search, text compare and signatures",
+    "Page operations (insert, delete, rotate, crop, reorder) on a working copy with undo, so the original file is never written",
+    "Merge, split, convert, compress, OCR with an invisible text layer, and password protection using the standard PDF AES-256 security handler",
+    "A per-document audit log of every finding and action, and a signed update check that never installs anything",
+    "Headless acceptance scripts that read exported files back with a separate parser and check, for example, that no redacted string survives"
+  ],
+  "architecture": {
+    "mermaid": "flowchart LR\n  UI[\"Renderer<br/>React UI + pdf.js<br/>(no network, no Node)\"] --> BR[\"Single bridge\"]\n  UI --> OCR[\"Local OCR\"]\n  BR --> MAIN[\"Main process<br/>request handlers\"]\n  MAIN --> DET[\"Detection manager\"]\n  DET -->|\"JSON lines\"| PY[\"Python sidecar<br/>Presidio + spaCy\"]\n  DET -.->|\"fallback\"| JS[\"Built-in JS<br/>recognizers\"]\n  MAIN --> EXP[\"Export engine<br/>content-stream rewrite\"]\n  MAIN --> PE[\"Page edits and tools<br/>(working copies)\"]\n  EXP --> FS[(\"Local disk<br/>source read-only\")]\n  PE --> FS\n  MAIN --> UPD[\"Signed update check\"]",
+    "caption": "The renderer holds the documents but cannot reach the network; the main process does the file work and makes one optional, signed request.",
+    "components": [
+      {
+        "name": "Renderer",
+        "desc": "Displays and edits documents with pdf.js, maps text offsets to on-page rectangles, and is sandboxed with no network and no Node."
+      },
+      {
+        "name": "Bridge",
+        "desc": "The only path between the renderer and the main process, and it copies every buffer that crosses it."
+      },
+      {
+        "name": "Detection manager",
+        "desc": "Splits documents into page-ordered chunks, sends them to the sidecar one at a time, times out stuck calls and falls back to the built-in engine."
+      },
+      {
+        "name": "Python sidecar",
+        "desc": "Runs Presidio and spaCy locally and analyzes each page independently, so chunking can never change the results."
+      },
+      {
+        "name": "Export engine",
+        "desc": "Deletes text and image operators under redaction marks, purges unreachable objects, flattens annotations and reports any page it could not clean."
+      },
+      {
+        "name": "Working copies",
+        "desc": "Page edits and tools write to copies in app storage, and undo points at files instead of holding bytes in memory."
+      }
+    ]
+  },
+  "flow": {
+    "title": "What happens when you redact a document",
+    "steps": [
+      "You run AI Redact. The renderer collects each page's text and asks the main process to analyze it for the chosen categories and keywords.",
+      "The document is split into small, page-ordered chunks and sent to the local Presidio sidecar one chunk at a time.",
+      "If the sidecar times out or crashes, it is killed so nothing queues behind it, and the built-in JavaScript engine analyzes that chunk instead.",
+      "Findings come back with their type, score and recognizer. High-confidence matches become redaction marks, and low-confidence ones are flagged amber for review.",
+      "On export, the main process reads the source file without writing to it and rewrites each page's content stream, deleting the operators under every mark.",
+      "It strips metadata, flattens annotations, paints the boxes last, and writes the result to the destination you chose.",
+      "The app reports what it actually did, including any page it could not clean, and appends every action to the document's audit log."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "The renderer has the documents but no network",
+      "why": "The part holding sensitive bytes cannot send them anywhere, even if a dependency misbehaves.",
+      "alternative": "A normal Electron app that simply chooses not to call the network.",
+      "tradeoff": "Every asset has to be bundled at build time, including fonts, the PDF worker and the OCR model."
+    },
+    {
+      "decision": "Delete content-stream operators instead of drawing boxes",
+      "why": "A redaction has to survive copy-paste, text extraction and other viewers.",
+      "alternative": "Rasterising pages, which destroys text and accessibility, or annotation boxes, which anyone can remove.",
+      "tradeoff": "I had to write a content-stream lexer and glyph geometry, and pages it cannot parse are reported instead of hidden."
+    },
+    {
+      "decision": "A Presidio sidecar with a JavaScript fallback",
+      "why": "Checksum-validated recognizers and NER beat anything I would write by hand, and the fallback keeps the app usable without Python.",
+      "alternative": "JavaScript rules only, or a bundled in-browser NER model.",
+      "tradeoff": "Packaging is harder, because the Python environment has to be created on the user's machine, and the two engines must stay category-compatible."
+    },
+    {
+      "decision": "Never write the source file",
+      "why": "A redaction tool that changes your original on a crash is unacceptable, and undo that points at files keeps memory flat.",
+      "alternative": "Editing in place, or holding a full copy of the document per undo step.",
+      "tradeoff": "Working copies use disk space, and undo fails gracefully with a message if a copy goes missing."
+    },
+    {
+      "decision": "A signed update check, no auto-installer",
+      "why": "Without OS code signing, an auto-updater would be a remote code execution path inside a tool built for confidential documents.",
+      "alternative": "A standard Electron auto-updater.",
+      "tradeoff": "Users update manually for now."
+    },
+    {
+      "decision": "Honest limits as product decisions",
+      "why": "Retyped text uses only the standard fonts, compare is text-only, and signatures are ink rather than cryptographic. The app never claims more than its export can guarantee.",
+      "alternative": "Claiming broader support and substituting quietly.",
+      "tradeoff": "Some features look less capable on paper, and the README lists every limit."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "True redaction inside arbitrary PDFs",
+      "body": "Content streams nest forms, use many text operators and sometimes lack font metrics. I compute glyph boxes with sensible fallbacks, delete operators that overlap a mark enough or whose centre falls inside it, recurse into nested forms, and purge unreachable objects. The acceptance test extracts the exported text with a separate parser and checks that no redacted string survives."
+    },
+    {
+      "title": "The purge that deleted pages",
+      "body": "Bookmarks and annotations point back at pages, so a capped reachability walk could decide a page was unreachable and delete its content and fonts. I split it into an uncapped walk that marks everything the page tree keeps and a capped purge of the rest. The worst case is now some leftover bytes, never a lost page, and a very large synthetic document guards that in the tests."
+    },
+    {
+      "title": "A sidecar that must never hang the app",
+      "body": "On long documents a single analysis request could effectively never return. I added page-ordered chunking, size-based timeouts, kill-on-timeout and a restart budget, with the JavaScript fallback yielding regularly so the window stays responsive."
+    },
+    {
+      "title": "A buffer bug that corrupted small images",
+      "body": "Small files read from disk can come back as views into a shared memory pool, and the PDF library read from the start of the pool instead of the start of the file. I copy every image into its own buffer before handing it over, and the bridge copies every buffer that crosses it."
+    }
+  ],
+  "next": [
+    "OS code signing and notarisation, then a signed in-app updater.",
+    "A pool of sidecars working on page-disjoint chunks, and streaming export for very large documents.",
+    "More OCR languages, and real cryptographic signatures alongside the visual stamp.",
+    "A unit test layer for renderer logic, and CI running the acceptance scripts on all three operating systems."
+  ],
+  "lesson": "Don't trust the writer. The most useful habit from Inkstone was checking output by reading it back with a different tool, and reporting what the app could not do as plainly as what it did. For anything that handles sensitive data, an honest list of pages it couldn't clean is worth more than a confident green tick."
+}

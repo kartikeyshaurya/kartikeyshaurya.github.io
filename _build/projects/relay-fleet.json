@@ -1,0 +1,149 @@
+{
+  "slug": "relay-fleet",
+  "theme": "platforms",
+  "order": 1,
+  "title": "Relay",
+  "headline": "A commute platform that can explain every ride it books",
+  "dek": "Relay runs a company's employee transport end to end: policy-checked booking, approvals, dispatch, live GPS tracking, SOS and vendor billing. It is a Rust backend, a role-gated React console and two Flutter apps, one for riders and one for drivers.",
+  "summary": "Employee cab platform: policy-checked booking, dispatch, live GPS, SOS and vendor billing in Rust and Flutter.",
+  "client": "Creed Infotech, internal product for corporate employee transport",
+  "role": "Lead engineer: architecture, Rust backend, both Flutter apps",
+  "status": "Pilot-stage MVP",
+  "stack": [
+    "Rust (Actix Web, Tokio)",
+    "PostgreSQL + PostGIS",
+    "sqlx",
+    "WebSockets",
+    "React",
+    "TanStack Query",
+    "Flutter",
+    "S3-compatible storage",
+    "Docker",
+    "Terraform on AWS"
+  ],
+  "problem": [
+    "Companies in India that run night shifts are responsible for getting every employee home safely. That comes with rules: escorts for women on late rides, approval chains, cost-centre budgets, vendor rate cards, and a record of every trip that someone can audit later. In most places this still runs on spreadsheets and phone calls to vendors.",
+    "Everyone involved wants something different. Employees want a cab that turns up and a way to call for help. Drivers want clear instructions on a phone that keeps working on a weak signal. The transport desk wants to plan tomorrow's cabs and watch tonight's. HR and finance want to know why a ride happened, who approved it and what it cost. When those live in separate tools, nobody can answer that last question."
+  ],
+  "approach": [
+    "The first thing I noticed was that the hard part was not any single screen. It was agreement. A booking, the trip it rides on, the budget it reserved and the message telling the driver all have to agree, and in a safety product they have to agree even when something fails halfway. That pointed me away from microservices. One company's fleet is a modest load, and what matters is that a state change and its side effects commit together. <b>I built a modular monolith in Rust: one binary, one module per domain, and every state change, its audit event and its queued side effects written in a single Postgres transaction.</b>",
+    "The second principle came straight from the product brief: make every decision explainable. Policy, fares, driver scoring and pooling are pure functions with no clock and no I/O. The booking form runs a dry-run check as the employee types and shows a rule-by-rule trace of allow, check or block. Driver allocation keeps its score broken into parts, because a bare number cannot be reviewed. The apps hold no business rules and read every setting from the server, because phones lag behind releases and a build from last month still talks to today's server.",
+    "The constraint that shaped the mobile side was the network. Drivers move between towers, switch to a navigation app, and phones kill background work. I treated the connection as unreliable by default. The driver app keeps every location fix unconfirmed until the server proves it has read it, buffers fixes to disk, and replays them on reconnect, and the server drops duplicates. On the server, live positions are validated in memory and pushed to watchers before they are written to the database, so a slow write never delays the map.",
+    "Where I accepted a cost, I wrote it down. Real-time fan-out lives in process memory, which is simple and fast on one node but does not survive splitting the API from the workers. I documented exactly what breaks and the fix I would build next, instead of adding a message broker the current scale did not need."
+  ],
+  "built": [
+    "A policy engine that checks every booking rule (night windows, escort rules, distance caps, blackout zones, budgets and grade caps) and returns a visible trace for each one",
+    "An ordered approval chain with escalation and expiry, and budget reservation that cannot double-spend under concurrent bookings",
+    "Two dispatch modes per company: self-service with timed driver offers, and transport-desk planning that turns shifts and cab groups into the next day's trips",
+    "Live GPS tracking over WebSockets: a fresh feed for each rider, and a coalesced fleet view for the control tower",
+    "An SOS path that never waits on GPS, runs on its own job queue so nothing can delay it, and re-pages and escalates until someone acknowledges it",
+    "Multi-tenancy added to a live schema, with each company's data isolated at the database level and a CI check that rejects tables nobody has classified",
+    "Two Flutter apps sharing one client design: silent session refresh, safe retries on bad networks, version gating, reconnect with backoff, and a disk-backed location buffer on the driver side",
+    "Finance basics: integer money, vendor rate cards, cheapest-compliant-vendor quotes, invoice matching and chargeback export"
+  ],
+  "architecture": {
+    "mermaid": "flowchart LR\n  R[\"Rider app<br/>(Flutter)\"] --> GW[\"Gateway\"]\n  D[\"Driver app<br/>(Flutter)\"] --> GW\n  W[\"Web console<br/>(React, role-gated)\"] --> GW\n  GW --> API[\"REST API\"]\n  GW --> WS[\"WebSocket gateway\"]\n  API --> DOM[\"Domain modules<br/>policy, booking, dispatch,<br/>trip, safety, finance\"]\n  WS --> LIVE[\"Live positions<br/>(in memory)\"]\n  LIVE --> HUB[\"Realtime hub\"]\n  HUB --> WS\n  DOM --> PG[(\"PostgreSQL + PostGIS<br/>data, jobs, outbox\")]\n  WK[\"Workers<br/>allocation, SOS escalation,<br/>notifications\"] --> PG\n  WK --> HUB\n  D -.->|\"direct upload\"| S3[(\"Object storage\")]",
+    "caption": "One Rust binary serves the API, the sockets and the background workers, with Postgres as the single source of truth.",
+    "components": [
+      {
+        "name": "Rider and driver apps",
+        "desc": "Flutter clients that hold no business rules and read every setting, from GPS cadence to SOS timings, from the server."
+      },
+      {
+        "name": "Web console",
+        "desc": "One React build that mounts only the portals a user's roles allow: employee, control tower, HR, finance and vendor."
+      },
+      {
+        "name": "Domain modules",
+        "desc": "Booking, trip and incident state machines, each changed through a single transition function that also records the audit event and queues the side effects."
+      },
+      {
+        "name": "Live positions and realtime hub",
+        "desc": "Keeps the last fix per driver in memory and pushes positions to riders and the control tower without a database round trip."
+      },
+      {
+        "name": "Workers",
+        "desc": "Run allocation, approval escalation, SOS escalation and notification delivery from durable job queues stored in Postgres."
+      },
+      {
+        "name": "PostgreSQL with PostGIS",
+        "desc": "Holds domain data, geo zones, the job queue and the transactional outbox, with constraints that enforce rules such as no overlapping trips for one driver."
+      }
+    ]
+  },
+  "flow": {
+    "title": "What happens when an employee books a cab",
+    "steps": [
+      "The employee picks a slot. The app only offers slots that the server's own night cut-off rule would accept.",
+      "As the form changes, the server runs a dry-run policy check and returns a rule-by-rule trace plus a quote from the cheapest compliant vendor.",
+      "On submit, the same evaluation runs inside one transaction that creates the booking, builds its approval steps, reserves budget and queues the notifications.",
+      "Approvers decide. An unanswered step escalates to the approver's manager, and a booking nobody decides on expires before pickup.",
+      "The approved booking is planned onto a trip, alone or pooled with colleagues, and a boarding code is issued.",
+      "The allocator scores eligible drivers and sends a timed offer. The first valid acceptance wins, and the trip moves to assigned in the same transaction.",
+      "The driver streams GPS. The rider watches the cab arrive, boards with the code, and has one-tap SOS for the whole ride."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "A modular monolith in one Rust binary",
+      "why": "The hard problems were correctness problems: a booking, its trip, the budget hold and the notification must agree. One process and one database let them commit together, and module boundaries keep a later split possible.",
+      "alternative": "Microservices connected by a message broker.",
+      "tradeoff": "Simpler operations and real transactions. Real-time fan-out lives in memory, so scaling out needs a shared bus, which I documented as the next step."
+    },
+    {
+      "decision": "Postgres for the job queue and the outbox",
+      "why": "A job and the state change that created it commit atomically, and there is one system to run, back up and reason about.",
+      "alternative": "Redis, RabbitMQ or a managed cloud queue.",
+      "tradeoff": "Some polling latency and a throughput ceiling, both well beyond what this fleet needs."
+    },
+    {
+      "decision": "Every side effect goes through a transactional outbox",
+      "why": "A driver is never recorded as assigned without the notification being queued, and never notified without being recorded. A provider outage cannot fail a booking. SOS messages jump the queue.",
+      "alternative": "Calling email or push providers inline, or fire-and-forget events.",
+      "tradeoff": "One poll of delay on durable messages. Live GPS frames skip the outbox, because a lost fix is replaced seconds later."
+    },
+    {
+      "decision": "The server is the authority and clients only render",
+      "why": "Rules can change without an app release, and pure functions are easy to test and to explain to an auditor.",
+      "alternative": "Duplicating policy rules in React and Flutter.",
+      "tradeoff": "More round trips, such as a policy check while the user types, in exchange for one source of truth."
+    },
+    {
+      "decision": "Tenant isolation in the database, not in every query",
+      "why": "A query that forgets a filter still cannot return another company's rows.",
+      "alternative": "A company filter added by hand to every query, or a database per tenant.",
+      "tradeoff": "Background jobs must explicitly enter a company's scope, which takes discipline and a CI check to enforce."
+    },
+    {
+      "decision": "Fan out GPS before writing it",
+      "why": "Validating against in-memory state and publishing first took database round trips off the latency-critical path. Writes are batched behind it.",
+      "alternative": "Write each fix, then publish it.",
+      "tradeoff": "A hard crash can lose a few seconds of breadcrumbs that watchers already saw. Under database pressure the write queue sheds fixes instead of growing without bound."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "GPS on flaky mobile networks",
+      "body": "A network switch can leave a socket half-open, so fixes vanish silently. The driver app treats every fix as unconfirmed until a later heartbeat reply proves the server read it, keeps a buffer on disk so an OS kill loses nothing, and replays it on reconnect. The server drops duplicates and shows only the newest buffered fix, so a cab is never animated through places it left long ago."
+    },
+    {
+      "title": "Background location on modern Android and iOS",
+      "body": "The phone has to keep reporting while the driver navigates in another app. During trips and SOS the stream runs as a foreground location service, avoids restarts that Android refuses from the background, and falls back to one-shot reads so tracking never silently stops. The server sets the cadence per trip state to balance battery against what the rider expects to see."
+    },
+    {
+      "title": "Two dispatch models in one system",
+      "body": "The client wanted both self-service booking and a transport desk that plans tomorrow's cabs. I made dispatch mode a per-company setting: in planned mode the offer machinery switches off and an evening job builds trips once per date. Supporting trips assigned the night before meant replacing a one-active-trip rule with a database constraint on overlapping time windows."
+    },
+    {
+      "title": "Retrofitting multi-tenancy",
+      "body": "Several client companies had to share one deployment after the schema already existed. I classified every table as company-owned, shared fleet or platform, added isolation policies, and wrote a CI check that fails when a new table is left unclassified. Notifications carry their company, so each one is delivered in the right scope."
+    }
+  ],
+  "next": [
+    "Build a shared real-time bus so the API and workers can run as separate services, then run the planned load test.",
+    "Ship push notifications with templates that never carry boarding codes or addresses.",
+    "Add metrics, tracing and alarms for outbox lag, dead jobs and unacknowledged SOS before a wider pilot.",
+    "Finish geofence, route-corridor and overspeed alerts, and move the duplicated Flutter UI kit into one shared package."
+  ],
+  "lesson": "Pick the architecture for the failure you are most afraid of. Here that was two parts of the system disagreeing about a ride, so I chose one transaction over many services and wrote down the scaling cost I was accepting. Writing the limit next to the design made every later decision easier to defend, and easier to change."
+}

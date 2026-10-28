@@ -1,0 +1,137 @@
+{
+  "slug": "business-data-collector",
+  "theme": "freight",
+  "order": 4,
+  "title": "Business Data Collector",
+  "headline": "One service that turns messy public sources into clean answers",
+  "dek": "A dedicated collector service behind the shipper approval agent. It owns every outside lookup, caches and paces each source, and reports a refusal as an answer instead of a crash.",
+  "summary": "A lookup service that gives an AI verification system one stable contract over many inconsistent public sources.",
+  "client": "Creed Infotech, for a US freight brokerage",
+  "role": "Main author: service design, provider integrations, caching, deployment",
+  "status": "Internal service, deployed",
+  "stack": [
+    "Python",
+    "FastAPI",
+    "PostgreSQL",
+    "SQLAlchemy",
+    "Redis",
+    "RQ",
+    "Docker Compose",
+    "GitLab CI"
+  ],
+  "problem": [
+    "Verifying a new shipper means checking its state business registration, its business identity, its public listings and its own website. Every one of those sources works differently. Some have official APIs or open-data portals, some only have a web search form, some are single-page apps, and some are behind a paywall. Every US state runs its registry its own way.",
+    "My shipper approval agent needed these facts, but putting all of that variety inside a credit-decision system would have made the most important code depend on the most fragile code. Lookups are slow, they fail in many different ways, and they carry terms-of-use obligations that someone has to own."
+  ],
+  "approach": [
+    "The first decision was about where this code should live. The lookup layer was the part most likely to break and the part with the most compliance exposure, so I took it out of the decision system entirely and gave it its own service with clean JSON contracts. The agent now asks a question and gets back one of four answers: found, not found, blocked, or error. If a source is replaced with a licensed API tomorrow, the agent does not change.",
+    "The second principle was that <b>a refusal is an answer, not an obstacle.</b> When a source declines an automated request, the service reports \"blocked\", logs it for monitoring and never caches it. It does not try to get around the block. Downstream, the agent treats \"blocked\" as \"a person can get this\" and opens a manual evidence slot. That kept the system on the right side of each source's terms and made the failure mode useful.",
+    "Compliance needed to be something you can review, not something scattered through code. Before writing providers, I classified every US jurisdiction, plus DC and Canada, by how it can be accessed: official API, bulk open data, web form, or not automatable at all, along with whether automation is allowed. That classification lives in one data file. Adding an open-data state is configuration only, and the jurisdictions marked not automatable are never automated.",
+    "Because each live lookup is slow and costly for the source, caching was part of the design from the start rather than an optimisation. I used a short in-process cache to absorb duplicate calls, a durable search log that doubles as a day-long cache and survives restarts, and only then a live request. Each provider can be switched off independently, and that check happens after the cache, so turning collection off stops new requests without hiding what was already gathered."
+  ],
+  "built": [
+    "A FastAPI service with one independent provider per source type: business identity, public listings, state registries and company websites.",
+    "A registry for state lookups that resolves each jurisdiction to a dedicated provider, a configuration-only open-data provider, or a manual-lookup answer.",
+    "A two-layer cache in front of every provider, with failures logged but never cached, so a single bad moment cannot pin a query to failure for a day.",
+    "A uniform error contract registered once for the whole app, so every provider reports blocked, disabled and upstream failures the same way.",
+    "Worker queues for slow lookups, chosen per provider by a single flag, so moving a source between inline and queued execution is a configuration change.",
+    "A website fetcher that only reaches public internet addresses, on the first request and every redirect, so it cannot be turned against internal systems.",
+    "Status endpoints and live health checks per provider that report last success, cache age and the blocked rate, which is the metric that matters most.",
+    "A hermetic test suite with recorded fixtures and pure parsers, so no test touches the network or a real database."
+  ],
+  "architecture": {
+    "mermaid": "flowchart LR\n  AG[\"Shipper approval<br/>agent\"] --> API[\"Collector API\"]\n  API --> L1[\"Short-lived<br/>memory cache\"]\n  API --> LOG[(\"Search log and<br/>company dossier\")]\n  API --> Q[(\"Queue and<br/>registry cache\")]\n  Q --> WK[\"Lookup workers\"]\n  API --> REG[\"Official registry APIs<br/>and open data\"]\n  WK --> FORM[\"Registry web forms\"]\n  API --> BIZ[\"Business-data<br/>providers\"]\n  API --> WEB[\"Public company<br/>websites\"]",
+    "caption": "The agent sees one contract; the collector decides whether each question is answered from cache, inline, or on a worker.",
+    "components": [
+      {
+        "name": "Collector API",
+        "desc": "One route group per provider, all protected the same way, each following cache, switch check, pacing, live lookup and persist in that order."
+      },
+      {
+        "name": "Memory cache",
+        "desc": "A small, bounded cache that absorbs duplicate concurrent requests for the same company."
+      },
+      {
+        "name": "Search log and dossier",
+        "desc": "A durable record of every lookup, including failures, that also serves as the day-long cache, plus a company record that accumulates everything ever seen."
+      },
+      {
+        "name": "Queue and workers",
+        "desc": "Run slow registry lookups outside the API process, and degrade to a clear timeout answer if no worker is available."
+      },
+      {
+        "name": "Jurisdiction classification",
+        "desc": "A reviewed data file that grades every registry by access method and records whether automation is allowed."
+      }
+    ]
+  },
+  "flow": {
+    "title": "What happens when the agent asks for a company's registration",
+    "steps": [
+      "The agent sends a company name to the registry endpoint, either for one state or for all of them.",
+      "For a search across every jurisdiction, the service fans out with a concurrency cap, and each state's failure becomes that state's own error result rather than sinking the response.",
+      "Each state checks the registry cache first. If the cache is down, the lookup just becomes slower; it never fails because of the cache.",
+      "States with official APIs or open data are answered inline. States that need a web form go to a worker, and the API waits up to a deadline.",
+      "Jurisdictions classified as not automatable return a manual-lookup answer immediately.",
+      "Results are merged and de-duplicated, successful answers are cached, and lookup history is written in the background so it never slows the response.",
+      "The agent receives the merged results with a per-state outcome list it can show to an operator."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "A separate collector service instead of lookups inside the agent.",
+      "why": "The lookup layer is the most fragile and most compliance-sensitive part. Isolating it made the agent smaller and easier to test and gave one place to own pacing and caching.",
+      "alternative": "Keeping the lookup code inside the agent, where it first lived.",
+      "tradeoff": "A network hop, a service key to manage and two services to deploy, with a contract that has to be documented carefully."
+    },
+    {
+      "decision": "Never work around a block.",
+      "why": "A refusal is the source's answer. Reporting it honestly respects its terms, and the consumer already has a manual path for it.",
+      "alternative": "Trying harder: more aggressive automation or third-party solving services.",
+      "tradeoff": "A lower hit rate on some sources, made up for by caching and the manual evidence path."
+    },
+    {
+      "decision": "Compliance as a reviewed data file.",
+      "why": "With every jurisdiction accessible in a different way, classifying them first made the policy reviewable in one place, and made adding an open-data state a configuration change.",
+      "alternative": "A long per-state chain of conditions, or treating every state as automatable.",
+      "tradeoff": "A file that must be kept current and re-verified against each source's live terms."
+    },
+    {
+      "decision": "Check the on/off switch after the cache, and never cache failures.",
+      "why": "Turning collection off should stop new requests without hiding what has already been gathered. Not caching failures stops one transient problem from lasting a day.",
+      "alternative": "A single cache for everything, including negative results.",
+      "tradeoff": "Two expiries to reason about, and a bounded memory cache so keys that are never read again still get freed."
+    },
+    {
+      "decision": "Inline or queued execution chosen by a provider flag.",
+      "why": "Fast API-backed sources should not pay queue latency, and slow ones should not block the API or share its process.",
+      "alternative": "Everything on a queue, or everything inline.",
+      "tradeoff": "The API waits on queued jobs up to a deadline, which is simpler than callbacks but holds a request open."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "A background write that hurt latency, then reliability",
+      "body": "Writing lookup history inline made every all-states search wait on dozens of serial writes. Making the writes fire-and-forget exposed two new problems: background tasks could be garbage-collected mid-flight, and too many concurrent writes could exhaust the connection pool. I kept strong references to the tasks and bounded them with a small semaphore."
+    },
+    {
+      "title": "Upstream data that lies by omission",
+      "body": "One source consistently left out fields, such as the state in an address, that the agent depended on. I documented it instead of papering over it, kept the raw address next to the parsed parts so a bad parse can always be recovered, and had the agent treat that source's address as partial evidence."
+    },
+    {
+      "title": "Keeping the metrics honest on the error path",
+      "body": "The blocked rate is the most important health signal, but a failed request's transaction would normally roll back its own log row. I made the service commit the failure record before raising the error, so the metric survives exactly the cases it exists to measure."
+    },
+    {
+      "title": "Tests that never touch the network",
+      "body": "The suite disables live collection and zeroes pacing before any test module loads, and patches each network seam where it is defined and wherever it was imported. Parsers are pure functions tested against recorded responses, so the code above the seams runs for real."
+    }
+  ],
+  "next": [
+    "Run linting and the full test suite in CI, not only the image build.",
+    "Move the pacing and memory cache into shared storage so the API can run more than one process.",
+    "Promote more registry states from web forms to official APIs where they exist.",
+    "Evaluate licensed data feeds as the long-term replacement for web lookups."
+  ],
+  "lesson": "When a dependency is unreliable, the best thing you can do for the systems above it is make its failures boring and well named. Giving every outcome a fixed status, treating a refusal as a valid answer, and moving compliance into a reviewed file meant the decision system never had to know how messy the outside world was."
+}

@@ -1,0 +1,148 @@
+{
+  "slug": "bulkmailer",
+  "theme": "platforms",
+  "order": 2,
+  "title": "BulkMailer",
+  "headline": "Bulk email that keeps sending when its providers fail",
+  "dek": "BulkMailer sends campaigns from a client's own domains across multiple SMTP providers, tracks every recipient, and brings replies back into a threaded inbox. I was part of the team, and my share was mostly the reliability work underneath.",
+  "summary": "Multi-tenant email platform with queued sends, provider failover, reply threading and a live Outlook mirror.",
+  "client": "Creed Infotech, for internal and client sending",
+  "role": "Part of the team: reliability, high availability, Outlook sync, documentation",
+  "status": "In production",
+  "stack": [
+    "Python",
+    "FastAPI",
+    "PostgreSQL",
+    "pgbouncer",
+    "RabbitMQ",
+    "Redis",
+    "MinIO",
+    "React",
+    "TypeScript",
+    "Microsoft Graph"
+  ],
+  "problem": [
+    "Sales, recruiting and operations teams across several client domains needed to send personalised campaigns and one-off bulk mail from their own addresses, see what happened to every recipient, and handle the replies, without paying per seat for a marketing suite or living inside Outlook.",
+    "The screens were the easy part. The hard parts were deliverability and failure. Microsoft 365 rejects external mail between two addresses on the same domain as spoofing, even when authentication passes, and the big inbox providers now require one-click unsubscribe. Providers throttle or go down in the middle of a campaign. Every reply has to find the exact send that produced it. And mirroring real Outlook mailboxes means never losing a change notification."
+  ],
+  "approach": [
+    "I was part of the team that built BulkMailer. My part was the layer that decides whether mail actually leaves and whether anything gets lost: high-availability hardening, the durable Outlook inbound pipeline, send-rate limiting and provider warmup, partitioning for the log tables, Outlook sync and sign-in fixes, and the architecture, database and reliability documentation.",
+    "The first thing I looked for was where work could quietly disappear. Some sends ran in-process, so a restart could strand them. Scheduled jobs started in every API worker, so health probes doubled and Outlook syncs raced each other into duplicate inbox rows. Outlook notifications had to be acknowledged within seconds, and anything in flight during a restart was gone. Each of these was a place where the system said yes and then forgot.",
+    "The principle I held to in my changes was to separate 'this message failed' from 'this is not the message's fault'. An open circuit breaker, a rate limit or a warmup cap should delay a message, not spend its retry budget. So the send path counts failures and deferrals separately, retries wait in timed queues instead of sleeping threads, and only real failures move a message toward the dead-letter queue. Before anything is marked failed, the system checks whether it actually went out.",
+    "On the inbound side I put a durable queue between Microsoft's notification and the work of fetching the message, so the webhook can acknowledge at once and the fetch can retry safely. <b>Coordination state such as breakers, leases and rate windows lives in Redis, and every check on the send path fails open, so a Redis blip slows mail down instead of stopping it.</b>"
+  ],
+  "built": [
+    "I added leader election for scheduled jobs, so cron work runs once across all API replicas, with a fallback for when the coordination store is down",
+    "I built the durable Outlook inbound pipeline: webhook to queue to idempotent fetch and upsert, with a two-stage dead-letter path that ends in a table an admin can review and retry",
+    "I added send-rate limiting and linear warmup ramps per provider, enforced consistently across every worker",
+    "I set up monthly partitioning with automatic provisioning and retention for the append-only log tables",
+    "I fixed Outlook sync and sign-in so one failed token refresh no longer silently stopped real-time mail",
+    "I hardened the deployment for availability: API replicas behind a failover load balancer, a one-shot migration step, and an HA runbook that sets the order for upgrading each datastore",
+    "The team-built core I worked within: queued campaign sends, round-robin provider routing with shared circuit breakers, a threaded reply inbox, and an Outlook-style mailbox view"
+  ],
+  "architecture": {
+    "mermaid": "flowchart LR\n  UI[\"React app\"] --> LB[\"Load balancer\"]\n  EXT[\"External systems<br/>(API, embedded inbox)\"] --> LB\n  LB --> API[\"API replicas<br/>(FastAPI)\"]\n  API --> PG[(\"PostgreSQL<br/>via pgbouncer\")]\n  API --> RD[(\"Redis<br/>breakers, leases, limits\")]\n  API -->|\"send jobs\"| MQ[\"RabbitMQ\"]\n  MQ --> SC[\"Send consumers\"]\n  SC --> SMTP[\"SMTP providers<br/>(several)\"]\n  SC --> GR[\"Microsoft Graph\"]\n  GR -->|\"change notifications\"| API\n  MQ --> IC[\"Inbound consumers\"]\n  IC --> GR\n  IC --> PG",
+    "caption": "The API replicas validate and enqueue; consumers do the sending and syncing, coordinated through shared state in Redis.",
+    "components": [
+      {
+        "name": "API replicas",
+        "desc": "Validate requests, write one log row per recipient, and publish jobs. Scheduled jobs run only on the elected leader."
+      },
+      {
+        "name": "RabbitMQ",
+        "desc": "Durable send, retry, wait and dead-letter queues, where timed wait queues provide backoff without any consumer sleeping."
+      },
+      {
+        "name": "Send consumers",
+        "desc": "Route each message across the providers a domain allows, skipping any that are open-circuited, rate-limited or at their warmup cap."
+      },
+      {
+        "name": "Redis",
+        "desc": "Holds circuit-breaker state, the round-robin cursor, warmup counters, rate windows and the scheduler lease, and every read on the send path fails open."
+      },
+      {
+        "name": "Inbound consumers",
+        "desc": "Fetch changed Outlook messages after a notification and upsert them idempotently into the mailbox mirror."
+      },
+      {
+        "name": "PostgreSQL",
+        "desc": "The system of record, with one row per recipient per send and time-partitioned log tables."
+      }
+    ]
+  },
+  "flow": {
+    "title": "What happens when a campaign goes out",
+    "steps": [
+      "The API checks ownership and creates one log row per recipient, each with its own reply address, before anything is sent.",
+      "Suppressed addresses are filtered out, and one job per recipient is published, with confirmation that the queue accepted it.",
+      "A send consumer picks the path. Same-domain mail from a connected Outlook sender goes through Microsoft Graph as a real internal message. Everything else rotates across the SMTP providers that domain allows.",
+      "On success the row is marked delivered, and the provider's breaker and warmup count are updated.",
+      "A hard failure goes to a short timed wait queue with its retry count raised. A deferral, where no provider could be tried, waits longer without using up a retry.",
+      "After the retry limit the message lands in the dead-letter queue, which checks whether the mail really went out before marking it failed.",
+      "When the recipient replies, the reply address identifies the original send, the reply is threaded under it, and it appears in the sender's browser in real time."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "Count deferrals separately from failures",
+      "why": "An open breaker or a rate limit is not the message's fault. Counting it as a retry would push deliverable mail into the dead-letter queue during any provider blip.",
+      "alternative": "A single retry counter.",
+      "tradeoff": "A deferred message can wait a long time before giving up, which suits bulk mail but would not suit transactional mail."
+    },
+    {
+      "decision": "Backoff by parking messages in timed queues",
+      "why": "The wait is the queue itself, so no consumer thread ever sleeps and the retry consumer stays cheap.",
+      "alternative": "Sleeping inside the consumer, or a delayed-message plugin.",
+      "tradeoff": "One queue per delay step, so backoff granularity is fixed by the set of queues."
+    },
+    {
+      "decision": "Round-robin across providers with a per-domain allowlist",
+      "why": "It spreads volume and sender reputation, and lets one client domain opt into a provider without changing everyone else's routing.",
+      "alternative": "A fixed primary provider with a fallback chain.",
+      "tradeoff": "Domains without an allowlist still depend on one default provider, which is a known single point of failure."
+    },
+    {
+      "decision": "Plain SMTP instead of provider HTTP APIs",
+      "why": "SMTP keeps our own message ID, which anchors reply threading and safe retries. Provider APIs replace it with their own.",
+      "alternative": "Each provider's native send API.",
+      "tradeoff": "We handle SMTP quirks ourselves, including never blindly retrying after the message body has been sent."
+    },
+    {
+      "decision": "A leader-elected scheduler inside the API",
+      "why": "Jobs were running once per worker. A short lease in Redis, renewed while the leader is healthy, with a file-lock fallback, fixed that with a small change and no new service.",
+      "alternative": "A dedicated scheduler container.",
+      "tradeoff": "Scheduler health is tied to API health, and failover takes up to one lease period."
+    },
+    {
+      "decision": "Partition the append-only logs, keep the main send log whole",
+      "why": "Lookups on the main send log are by globally unique IDs, which a time partition would turn into a scan across every partition. Append-only logs are queried by time, so they get monthly partitions with retention.",
+      "alternative": "Partition every log table by date.",
+      "tradeoff": "The main table keeps growing until it gets an ID-based archive scheme."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "Same-domain mail rejected as spoofing",
+      "body": "Microsoft 365 bounced mail between two addresses on a client's own domain even with authentication aligned. The send path routes that mail through Microsoft Graph so it becomes a genuine internal message. That brought its own guards: large recipient lists downgrade to SMTP, each mailbox has a send budget to respect Graph throttling, and an ambiguous timeout triggers a lookup before any resend."
+    },
+    {
+      "title": "Cron jobs running in every worker",
+      "body": "The scheduler started in every API process, which doubled health probes and raced Outlook syncs into duplicate inbox rows. I added lease-based leader election with a fallback, and moved migrations into a one-shot step so the replicas stop racing each other on schema changes."
+    },
+    {
+      "title": "Not losing Outlook notifications",
+      "body": "Microsoft expects a fast acknowledgement, and an API restart lost whatever was in flight. I put a durable queue between the webhook and the message fetch, scaled out the consumers, and added a two-stage dead-letter path. The second stage drains into the database, because one stuck message at the head of a queue would otherwise block everything behind it."
+    },
+    {
+      "title": "Retries fighting the queue's own expiry",
+      "body": "A load audit found that messages expiring in a queue kept a zero retry count and could cycle forever, and that unparseable jobs could loop. Backoff moved to timed wait queues, the send consumer became the only place counts increase, retries and deferrals both got hard caps, and unparseable jobs now go straight to the dead queue. The one remaining edge case is documented, not hidden."
+    }
+  ],
+  "next": [
+    "Move the remaining in-process interactive sends onto the durable queue and retire the manual recovery script.",
+    "Track true delivery at campaign level, and add delivery telemetry for every provider.",
+    "Backups with point-in-time recovery and a tested restore, then replicated datastores in the order the HA runbook sets out.",
+    "Queue-depth and job-age metrics with alerts."
+  ],
+  "lesson": "Most lost work hides in the gap between 'accepted' and 'done'. The fixes that mattered here were small and unglamorous: a lease, a durable queue in front of a webhook, a second counter. I now look for every place a system acknowledges something before it is safe, and I write down the cases I have not closed yet instead of hoping nobody finds them."
+}

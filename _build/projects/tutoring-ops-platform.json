@@ -1,0 +1,148 @@
+{
+  "slug": "tutoring-ops-platform",
+  "theme": "platforms",
+  "order": 4,
+  "title": "Tutoring operations platform",
+  "headline": "One database behind a tutoring company's staff and families",
+  "dek": "Two apps on one MySQL database for an online tutoring company: a staff portal for sales, scheduling, tutors and payments, and a portal where families sign up, pay, join live classes and track progress. I was part of the team, working on deployment and database migrations.",
+  "summary": "Staff and family portals on one shared database, running a tutoring company from first lead to tutor pay.",
+  "client": "Creed Infotech, for an online tutoring company",
+  "role": "Part of the team: deployment, environment configuration, database migrations",
+  "status": "In active development",
+  "stack": [
+    "Node.js",
+    "Express",
+    "MySQL",
+    "React",
+    "Socket.IO",
+    "Zod",
+    "node-cron",
+    "Jitsi",
+    "nginx",
+    "Docker Compose"
+  ],
+  "problem": [
+    "A tutoring business runs on hand-offs. A lead becomes a demo class, the demo becomes an enrolment, and the enrolment needs a payment, a tutor, a weekly schedule, quality audits, progress reports and finally tutor pay. Without one system those steps live in spreadsheets, meeting accounts and payment dashboards, and nobody can see a student's whole journey.",
+    "Two very different groups use the system. Staff (sales, coordinators, tutors, auditors, HR and management) work in it all day and need to scan lists fast and hand a record to a teammate. Families use it now and then to pay, join a class or check progress. There was also data in an older learning system that had to come across."
+  ],
+  "approach": [
+    "I was part of a team of several developers. My own work was on the deployment side: environment configuration and database migration fixes. That work made me learn how the two apps really fit together, because they deploy separately but write to the same database, both run scheduled jobs, and share one real-time server.",
+    "The first thing I noticed was the shared database. The staff portal owns the schema and its migrations, and the family portal runs as its own deployable but connects to the same MySQL. That is what makes the product feel joined up: when a parent signs up, the matching sales lead turns qualified in the same request, with no sync job. It also means a migration written for one app can break the other, and every environment has to work from one schema history.",
+    "The constraint that shaped my migration work was that no two environments looked alike. Some were fresh Docker volumes, others carried tables from the older learning system. A data backfill that assumed a legacy table existed would break a fresh install. <b>The principle I worked to is that a migration must be safe to run anywhere:</b> check the database catalog for the tables and columns it depends on, run the change only if they exist, and otherwise do nothing. The team's migration runner already tolerated re-runs, so guarded migrations fit cleanly on top.",
+    "Looking at the deployment as a whole, I came away with a clear list of where the shared design costs us. Scheduled jobs registered by both apps can run twice, because each process only guards against overlapping with itself. Whiteboard state lives in one process's memory. Code copied between the two backends drifts apart. Those are the things I would fix first, and they shape the plan below."
+  ],
+  "built": [
+    "I made database migrations safe on both fresh and legacy databases by guarding data backfills on what actually exists, so one migration history runs everywhere",
+    "I worked on environment configuration for the separately deployed staff and family stacks, including how the family stack reaches the shared database",
+    "Staff portal (team-built): a sales funnel with leads, follow-ups, demo classes, daily call reports, targets and incentives",
+    "Students and tutors (team-built): schedules, tutor assignment, attendance, session audits, report cards and tutor pay",
+    "Live classes (team-built): a commercial meeting service or self-hosted Jitsi with automatic recording, AI transcription and summaries, and a shared whiteboard",
+    "Family portal (team-built): sign-up, plan purchase with partial payment schedules and coupons, class join, quizzes and progress reports",
+    "Operations (team-built): scheduled jobs defined in the database so ops can retime or switch them off without a deploy"
+  ],
+  "architecture": {
+    "mermaid": "flowchart LR\n  SS[\"Staff web app<br/>(React)\"] --> SAPI[\"Staff API<br/>(Express)\"]\n  FA[\"Family web app<br/>(React)\"] --> GW[\"Gateway<br/>(nginx)\"]\n  GW --> UAPI[\"Family API<br/>(Express)\"]\n  SAPI --> RT[\"Real-time server<br/>chat + whiteboard\"]\n  FA --> RT\n  SAPI --> DB[(\"Shared MySQL<br/>database\")]\n  UAPI --> DB\n  JOBS[\"Scheduled jobs<br/>(defined in the database)\"] --> DB\n  SAPI --> MEET[\"Live classes<br/>meeting service or Jitsi\"]\n  MEET --> AI[\"Transcription and<br/>AI summaries\"]\n  UAPI --> PAY[\"Payment providers\"]",
+    "caption": "Two separately deployed apps share one database and one real-time server, which keeps them consistent but couples their schemas.",
+    "components": [
+      {
+        "name": "Staff API",
+        "desc": "Runs sales, scheduling, tutors, sessions and payments, owns the schema migrations, and hosts the real-time server."
+      },
+      {
+        "name": "Family API",
+        "desc": "A separate deployable for sign-up, plans, payments and class join that writes to the same tables staff use."
+      },
+      {
+        "name": "Shared MySQL database",
+        "desc": "One schema for both apps, so a family's sign-up or payment is visible to staff immediately."
+      },
+      {
+        "name": "Real-time server",
+        "desc": "Socket rooms for team chat and the shared lesson whiteboard, with access checked when a client connects."
+      },
+      {
+        "name": "Scheduled jobs",
+        "desc": "Reminder emails, meeting-link creation and report sync, defined as database rows so timing can change without a deploy."
+      },
+      {
+        "name": "Live classes",
+        "desc": "A per-company choice of a commercial meeting service or self-hosted Jitsi, with recordings turned into AI summaries."
+      }
+    ]
+  },
+  "flow": {
+    "title": "What happens when a lead becomes a paying student",
+    "steps": [
+      "An account manager creates or imports a lead, logs follow-ups and books a demo class.",
+      "The parent signs up on the family portal with their country, timezone and the student's grade.",
+      "In the same request the system finds the lead with that parent's email, marks it qualified, links the new student and adds a note. This step is best-effort and never blocks sign-up.",
+      "The family picks a plan, applies a coupon, and pays in full or on a partial payment schedule.",
+      "Staff see the conversion and the payment straight away in the shared tables, and a coordinator assigns a tutor and builds the weekly schedule.",
+      "Scheduled jobs create meeting links before each class and send reminders for upcoming instalments.",
+      "After each recorded class, the recording is transcribed and summarised, and the session feeds attendance, audits, report cards and tutor pay."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "Two apps, one shared database",
+      "why": "The family side needs the same users, plans, schedules and leads that staff manage, and sharing tables gave instant consistency without a service API in between.",
+      "alternative": "The family portal calling the staff API, or separate databases synced by events.",
+      "tradeoff": "Coupling at the schema level: both codebases must agree on every table, so one app has to own the migrations."
+    },
+    {
+      "decision": "Migrations that check before they change",
+      "why": "Environments ranged from empty volumes to databases carrying legacy tables, so a backfill has to confirm its inputs exist and do nothing if they do not.",
+      "alternative": "Assuming one known starting state, or keeping separate migration sets per environment.",
+      "tradeoff": "More verbose SQL, and the runner has to treat a guarded block as a single statement."
+    },
+    {
+      "decision": "Plain SQL migrations with a runner that tolerates re-runs",
+      "why": "SQL files are readable by anyone and run on any MySQL, and skipping 'already exists' errors lets half-migrated volumes catch up.",
+      "alternative": "A migration framework with down scripts.",
+      "tradeoff": "Skipping errors can hide a real problem, and there are no rollbacks."
+    },
+    {
+      "decision": "Scheduled jobs defined in a database table",
+      "why": "Reminder timing and refresh intervals are business rules that ops wanted to change without a release.",
+      "alternative": "Hard-coded schedules, or an external scheduler.",
+      "tradeoff": "With two apps reading the same table, a job registered in both can run twice, because the overlap guard is per process."
+    },
+    {
+      "decision": "Permissions loaded fresh on every request",
+      "why": "The session token carries only identifiers, so a revoked permission or an ended session takes effect on the very next request.",
+      "alternative": "Putting permissions inside the token.",
+      "tradeoff": "A few extra database reads per request, which a short cache can remove later."
+    },
+    {
+      "decision": "A meeting provider abstraction",
+      "why": "Some companies already paid for a commercial meeting service, others needed cheaper classes and full control of recordings, and one scheduling path serves both.",
+      "alternative": "A single meeting provider.",
+      "tradeoff": "Running Jitsi and its recorder becomes the team's job."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "Migrations on fresh and legacy databases",
+      "body": "A backfill that assumed a legacy table existed broke fresh installs. I rewrote it to check the database catalog for the table and column first and run the update conditionally, falling back to a harmless no-op. The same migration history now runs on an empty volume and on a database that still carries the older system's tables."
+    },
+    {
+      "title": "Two backends drifting apart",
+      "body": "The family API was built by copying modules from the staff API, and copies drift. Comparing the two showed the same features wired differently in each. The lasting fix is shared packages for sign-in, users, plans, payments and scheduling, so both apps run the same code."
+    },
+    {
+      "title": "Jobs that can run twice",
+      "body": "Both apps load the same job table, and each only guards against overlapping with itself. The safe setup is a single job owner. The staff app already has a switch to turn its scheduler off, and the next step is the same switch on the family app plus a database-level lock per job."
+    },
+    {
+      "title": "Real-time across networks",
+      "body": "Opening the family portal on a local network address while the real-time endpoint pointed at the loopback address made browsers refuse the socket. The client now rewrites a loopback address to the page's own host, and each company can configure its own whiteboard endpoint."
+    }
+  ],
+  "next": [
+    "One source of truth for the schema: a single migration owner shared by both apps, tested in CI against a fresh database and a legacy copy.",
+    "Extract shared code into packages instead of copies.",
+    "Move scheduled jobs into one worker with distributed locks, and share real-time state across instances so the API can scale out.",
+    "Zero-downtime deploys: build images in CI, swap on the server behind health checks, and make the existing test suites a required stage."
+  ],
+  "lesson": "Sharing a database is a fast way to make two apps feel like one product, and the bill arrives in migrations and scheduled jobs. Working on the deployment side taught me to treat the schema as a shared contract with one owner, and to write every migration as if it will meet a database I have never seen."
+}

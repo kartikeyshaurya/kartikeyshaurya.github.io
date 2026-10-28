@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Projects: how I build systems | Kartikey Shaurya</title>
+  <meta name="description" content="Case studies of production AI systems: what I built, how I thought about it, and the trade-offs I made.">
+  <meta name="author" content="Kartikey Shaurya">
+  <link rel="canonical" href="https://kartikeyshaurya.github.io/projects/">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Projects: how I build systems | Kartikey Shaurya">
+  <meta property="og:description" content="Case studies of production AI systems: what I built, how I thought about it, and the trade-offs I made.">
+  <meta property="og:url" content="https://kartikeyshaurya.github.io/projects/">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="wrap util">
+    <ul>
+      <li>Chandigarh, India</li>
+    </ul>
+    <ul>
+      <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
+      <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a class="pdf" href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+    </ul>
+  </div>
+
+  <div class="wrap masthead masthead--slim">
+    <a class="logo" href="../index.html">Kartikey Shaurya</a>
+    <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
+  </div>
+
+  <nav class="primary" aria-label="Sections">
+    <ul>
+      <li><a href="../index.html">Front page</a></li>
+      <li><a href="../projects/index.html" class="is-active" aria-current="page">Projects</a></li>
+      <li><a href="../index.html#experience">Experience</a></li>
+      <li><a href="../index.html#about">About</a></li>
+      <li><a class="cta" href="../index.html#hire">Hire me</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main">
+  <section class="wrap case-head case-head--index">
+    <p class="kicker">Projects <span class="fmt">Case studies</span></p>
+    <h1>How I build systems, one decision at a time</h1>
+    <p class="dek">Each page covers the problem, how I reasoned about it, the architecture I chose, and the trade-offs I accepted. Most client names and internal details are withheld, but the reasoning is all here.</p>
+  </section>
+
+  <section class="band" aria-labelledby="principles-h">
+    <div class="wrap">
+      <p class="kicker" id="principles-h">Principles that keep showing up <span class="fmt">Across these projects</span></p>
+      <dl class="principles">
+        <div><dt>The model advises. Code decides.</dt><dd>Where money, credit or identity is at stake, an LLM gives an opinion and a deterministic, testable rule makes the call.</dd></div>
+        <div><dt>People approve risky actions.</dt><dd>Writes to customer systems go through review queues, approval gates or two-person rules.</dd></div>
+        <div><dt>Queues over hope.</dt><dd>Slow or flaky work runs in background workers with retries, so the user-facing path stays fast.</dd></div>
+        <div><dt>Degrade, don't break.</dt><dd>Circuit breakers, caches and switches let one failing provider slow a system down instead of stopping it.</dd></div>
+        <div><dt>Spend compute where it's uncertain.</dt><dd>CPU models handle the common case; the expensive model sees only what the cheap one can't settle.</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="wrap section" aria-labelledby="all-h">
+    <div class="sec-h">
+      <h2 id="all-h">All projects</h2>
+      <a href="../index.html">Front page ↑</a>
+    </div>
+    <div class="cols cols--3 hl">
+<div class="col" id="freight">
+  <h3>Freight &amp; Logistics AI</h3>
+  <p class="col-blurb">Agents and services for a freight brokerage&#x27;s back office: verification, calls, email and carrier vetting.</p>
+  <ul><li>
+  <p class="kicker">Shipper Approval Agent</p>
+  <h4><a href="shipper-approval-agent.html">An AI credit check where the model advises and never decides</a></h4>
+  <p>Automated shipper verification: AI reviews advise, a deterministic policy engine decides, humans confirm every rejection.</p>
+</li>
+<li>
+  <p class="kicker">Valora Broker Agent</p>
+  <h4><a href="broker-agent.html">A chat agent that reads the TMS and asks before it writes</a></h4>
+  <p>Multi-agent assistant inside a freight TMS: live answers, and every write waits for the broker&#x27;s approval.</p>
+</li>
+<li>
+  <p class="kicker">ValueLoads AI Voice Platform</p>
+  <h4><a href="valueloads-voice.html">The agent that answers the phone and leaves clean data behind</a></h4>
+  <p>Multi-tenant AI phone agents on Twilio and Pipecat, with prepaid billing, campaigns and post-call extraction.</p>
+</li>
+<li>
+  <p class="kicker">Business Data Collector</p>
+  <h4><a href="business-data-collector.html">One service that turns messy public sources into clean answers</a></h4>
+  <p>A lookup service that gives an AI verification system one stable contract over many inconsistent public sources.</p>
+</li>
+<li>
+  <p class="kicker">TMS MCP Server</p>
+  <h4><a href="tms-mcp-server.html">A searchable map of a huge API, and a safe key</a></h4>
+  <p>MCP tools for exploring a very large freight TMS API, and a sign-in bridge for safe live calls.</p>
+</li>
+<li>
+  <p class="kicker">FreightSense</p>
+  <h4><a href="freightsense.html">One processing spine for every freight back-office check</a></h4>
+  <p>Multi-tenant AI back office for freight: invoices, call QA and AR/AP through one scored, reviewable pipeline.</p>
+</li>
+<li>
+  <p class="kicker">Carrier Vetting Agent</p>
+  <h4><a href="carrier-vetting.html">Vetting carriers by the rulebook, with an LLM that can&#x27;t approve</a></h4>
+  <p>Carrier-vetting SOP as five LangGraph workflows: rules decide, the LLM can only lower a verdict.</p>
+</li>
+<li>
+  <p class="kicker">Check Reader</p>
+  <h4><a href="check-reader.html">Reading bank details off a check without keeping them</a></h4>
+  <p>A privacy-hardened API that reads routing and account numbers from checks and bank documents with a vision model.</p>
+</li>
+<li>
+  <p class="kicker">Load Search Service</p>
+  <h4><a href="load-search.html">A load board that tells the agent what to ask next</a></h4>
+  <p>In-memory Polars load board that returns matches plus the next question for a voice agent to ask.</p>
+</li>
+<li>
+  <p class="kicker">Broker Inbox AI</p>
+  <h4><a href="broker-inbox-ai.html">Turning a broker&#x27;s inbox into drafted, reviewable TMS actions</a></h4>
+  <p>LangGraph email pipeline that links each message to a shipment and drafts the TMS action for review.</p>
+</li></ul>
+</div><div class="col" id="platforms">
+  <h3>Platforms &amp; Products</h3>
+  <p class="col-blurb">Full-stack products with real users, queues, mobile apps and integrations.</p>
+  <ul><li>
+  <p class="kicker">Relay</p>
+  <h4><a href="relay-fleet.html">A commute platform that can explain every ride it books</a></h4>
+  <p>Employee cab platform: policy-checked booking, dispatch, live GPS, SOS and vendor billing in Rust and Flutter.</p>
+</li>
+<li>
+  <p class="kicker">BulkMailer</p>
+  <h4><a href="bulkmailer.html">Bulk email that keeps sending when its providers fail</a></h4>
+  <p>Multi-tenant email platform with queued sends, provider failover, reply threading and a live Outlook mirror.</p>
+</li>
+<li>
+  <p class="kicker">AI-native project manager</p>
+  <h4><a href="project-manager-mcp.html">A project tracker your AI assistant can work inside, safely</a></h4>
+  <p>Multi-tenant project manager with a governed AI layer and an MCP server for ChatGPT and Claude.</p>
+</li>
+<li>
+  <p class="kicker">Tutoring operations platform</p>
+  <h4><a href="tutoring-ops-platform.html">One database behind a tutoring company&#x27;s staff and families</a></h4>
+  <p>Staff and family portals on one shared database, running a tutoring company from first lead to tutor pay.</p>
+</li></ul>
+</div><div class="col" id="ml">
+  <h3>Applied ML &amp; AI Infrastructure</h3>
+  <p class="col-blurb">Serving models in production: speech, vision, retrieval, and privacy tooling.</p>
+  <ul><li>
+  <p class="kicker">Speech-to-Text API</p>
+  <h4><a href="speech-to-text-api.html">An OpenAI-compatible transcription service that runs on plain CPUs</a></h4>
+  <p>Drop-in OpenAI-compatible transcription API running Parakeet on CPU, with durable jobs for hours-long audio.</p>
+</li>
+<li>
+  <p class="kicker">Face Verification</p>
+  <h4><a href="face-verification.html">Checking the selfie against the licence, and explaining the retake</a></h4>
+  <p>Selfie-to-licence face matching on CPU, with passive liveness and a guarded LLM second opinion.</p>
+</li>
+<li>
+  <p class="kicker">Hybrid Search RAG</p>
+  <h4><a href="hybrid-search-rag.html">A document chatbot that would rather say it doesn&#x27;t know</a></h4>
+  <p>Document Q&amp;A that fuses BM25 and vector search, grades retrieved chunks, and ships as a metered API.</p>
+</li>
+<li>
+  <p class="kicker">Brain Response Studio</p>
+  <h4><a href="brain-response-studio.html">Drop in a clip, watch a predicted brain respond</a></h4>
+  <p>A serving system and 3D cortex viewer for Meta&#x27;s TRIBE v2 brain-response model, on one GPU.</p>
+</li>
+<li>
+  <p class="kicker">Inkstone</p>
+  <h4><a href="inkstone.html">A PDF editor that actually deletes what it redacts</a></h4>
+  <p>Offline desktop PDF editor with local AI redaction that removes data from the file, not just hides it.</p>
+</li></ul>
+</div>
+    </div>
+  </section>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <p class="logo">Kartikey Shaurya</p>
+      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="../index.html">Front page</a></li>
+        <li><a href="../projects/index.html">All projects</a></li>
+        <li><a href="../index.html#experience">Experience</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Elsewhere</h4>
+      <ul>
+        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+      </ul>
+    </div>
+    <p class="fine">
+      <span>© 2026 Kartikey Shaurya</span>
+      <span>Most client names and internal details are withheld. Architecture is shown at the component level.</span>
+    </p>
+  </div>
+</footer>
+</body>
+</html>

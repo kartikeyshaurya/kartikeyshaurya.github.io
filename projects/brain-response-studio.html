@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Brain Response Studio: Drop in a clip, watch a predicted brain respond | Kartikey Shaurya</title>
+  <meta name="description" content="A local studio around Meta&#x27;s open TRIBE v2 research model. The model is Meta&#x27;s; I built the serving system that runs it on one consumer GPU and the 3D visualisation that makes its output readable for people who aren&#x27;t neuroscientists.">
+  <meta name="author" content="Kartikey Shaurya">
+  <link rel="canonical" href="https://kartikeyshaurya.github.io/projects/brain-response-studio.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Brain Response Studio: Drop in a clip, watch a predicted brain respond | Kartikey Shaurya">
+  <meta property="og:description" content="A local studio around Meta&#x27;s open TRIBE v2 research model. The model is Meta&#x27;s; I built the serving system that runs it on one consumer GPU and the 3D visualisation that makes its output readable for people who aren&#x27;t neuroscientists.">
+  <meta property="og:url" content="https://kartikeyshaurya.github.io/projects/brain-response-studio.html">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="wrap util">
+    <ul>
+      <li>Chandigarh, India</li>
+    </ul>
+    <ul>
+      <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
+      <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a class="pdf" href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+    </ul>
+  </div>
+
+  <div class="wrap masthead masthead--slim">
+    <a class="logo" href="../index.html">Kartikey Shaurya</a>
+    <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
+  </div>
+
+  <nav class="primary" aria-label="Sections">
+    <ul>
+      <li><a href="../index.html">Front page</a></li>
+      <li><a href="../projects/index.html" class="is-active" aria-current="page">Projects</a></li>
+      <li><a href="../index.html#experience">Experience</a></li>
+      <li><a href="../index.html#about">About</a></li>
+      <li><a class="cta" href="../index.html#hire">Hire me</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" class="case">
+  <section class="wrap case-head">
+    <p class="kicker"><a href="index.html">Projects</a> <span class="fmt">Applied ML &amp; AI Infrastructure</span></p>
+    <h1>Drop in a clip, watch a predicted brain respond</h1>
+    <p class="dek">A local studio around Meta&#x27;s open TRIBE v2 research model. The model is Meta&#x27;s; I built the serving system that runs it on one consumer GPU and the 3D visualisation that makes its output readable for people who aren&#x27;t neuroscientists.</p>
+    <p class="byline">By <b>Kartikey Shaurya</b> · Brain Response Studio · Internal R&amp;D tool</p>
+  </section>
+
+  <div class="wrap case-grid">
+    <div class="case-body">
+
+      <section aria-labelledby="problem-h">
+        <h2 id="problem-h">The problem</h2>
+        <div class="prose"><p>Meta FAIR released TRIBE v2, a research model that predicts fMRI brain activity at about twenty thousand points on the cortex, one frame per second, from video, audio or text. It is released for non-commercial use and ships as a Python library with no product around it. Running it means a gated model download, chaining several large foundation models, tuning GPU memory, and writing NumPy code to make sense of a matrix with twenty thousand columns.</p>
+<p>The people who wanted to use it were colleagues and researchers curious about what the model predicts for a piece of content, such as an ad, a clip or a sentence, without writing any Python. Most of them are not neuroscientists. The constraints were one machine, an 8 GB consumer GPU at best, often no GPU at all on developer laptops, and inputs the model doesn&#x27;t accept natively, such as photos and GIFs.</p></div>
+      </section>
+
+      <section aria-labelledby="approach-h">
+        <h2 id="approach-h">How I thought about it</h2>
+        <div class="prose prose--lead"><p>The first constraint was memory. TRIBE v2 chains V-JEPA 2 for video, Wav2Vec-BERT for audio, LLaMA 3.2 for text and WhisperX for transcription, and the video encoder alone didn&#x27;t fit on an 8 GB GPU at full precision. I didn&#x27;t want to fork a research library that is still changing, or require bigger hardware, so I applied a few small, documented runtime patches when the model loads: half precision for the video encoder, equal-length windows for long audio so attention memory stays bounded, and reuse of the encoder output when consecutive frames are the same. Each patch is narrow and can be switched off on its own.</p>
+<p>The same constraint decided the serving design. The GPU can hold one pipeline at a time, so concurrency would only cause out-of-memory errors. I used <b>a single background worker that runs one job at a time</b>, and made the database the source of truth, so a crash or restart re-queues anything unfinished instead of losing it. Unsupported inputs are converted at the edge: photos and GIFs become short videos, and text and captions become speech with word timings I generate myself. That way the model path never changes.</p>
+<p>The second half of the problem was making the output readable. A run is a large float matrix, so I send it to the browser as raw binary instead of JSON and recolour a three.js cortex mesh in place as the video plays. On top of that I added layers of meaning: per-region averages from a standard brain atlas, and a plain-language grouping into everyday systems like seeing, hearing and understanding words. The technical names stay visible, and the interface says clearly that this is a model&#x27;s prediction and a simplification, not a medical test.</p>
+<p>I also made mock mode a first-class feature, because most development machines have no GPU. It produces smooth, realistic-looking synthetic activity so the whole interface can be built and tested anywhere, and every mock run is recorded and labelled as synthetic so it can&#x27;t be mistaken for a real prediction.</p></div>
+      </section>
+
+      <section aria-labelledby="built-h">
+        <h2 id="built-h">What I built</h2>
+        <ul class="ticks"><li>A job-based API that accepts video, audio, text, photos and GIFs, streams uploads to disk with a size cap, and returns immediately while the work runs in the background.</li>
+<li>A single GPU worker that survives restarts, frees GPU memory after every run including failed ones, and records plain-language hints for common failures.</li>
+<li>Small runtime patches that let Meta&#x27;s TRIBE v2 pipeline run on an 8 GB GPU without forking the library.</li>
+<li>A media pipeline that turns photos and GIFs into video and turns text and captions into speech with generated word timings, which also skips a slow transcription step.</li>
+<li>A three.js cortex viewer that recolours the brain mesh every second in sync with the uploaded media, with camera presets and an activity threshold.</li>
+<li>Region analysis: a ranked list of the most active regions at any moment and time-series charts for regions the user pins.</li>
+<li>A plain-language summary that groups regions into everyday brain systems with simple activity levels.</li>
+<li>A mock mode with clearly labelled synthetic output, so the full app runs on machines with no GPU or model access.</li></ul>
+      </section>
+
+      <section aria-labelledby="arch-h">
+        <h2 id="arch-h">How it fits together</h2>
+        <figure class="diagram">
+          <pre class="mermaid">flowchart LR
+  A[&quot;Browser&lt;br/&gt;React and three.js&quot;] --&gt; B[&quot;API&lt;br/&gt;uploads and runs&quot;]
+  B --&gt; C[&quot;Media conversion&lt;br/&gt;photo or GIF to video,&lt;br/&gt;text to speech&quot;]
+  B --&gt; D[&quot;Run database&lt;br/&gt;status and summaries&quot;]
+  B --&gt; E[&quot;Job queue&quot;]
+  E --&gt; F[&quot;GPU worker&lt;br/&gt;one run at a time&quot;]
+  F --&gt; G[&quot;TRIBE v2 (Meta)&lt;br/&gt;V-JEPA 2, Wav2Vec-BERT,&lt;br/&gt;LLaMA 3.2&quot;]
+  F --&gt; H[&quot;Prediction files&lt;br/&gt;raw float matrix&quot;]
+  F --&gt; D
+  B --&gt; I[&quot;Brain mesh&lt;br/&gt;and atlas&quot;]
+  H --&gt; B</pre>
+          <figcaption>Meta&#x27;s model sits behind a single GPU worker, and everything around it handles inputs, durable job state and getting a large prediction matrix into the browser.</figcaption>
+        </figure>
+        <dl class="components"><div><dt>API</dt><dd>Validates and stores uploads, creates runs, and serves run details, raw predictions, the original media and the brain mesh.</dd></div>
+<div><dt>Media conversion</dt><dd>Turns photos and GIFs into short videos and text into speech with word timings, so every input reaches the model in a form it accepts.</dd></div>
+<div><dt>GPU worker</dt><dd>Runs one prediction at a time, saves the result and summaries, re-queues unfinished runs after a restart and always frees GPU memory.</dd></div>
+<div><dt>TRIBE v2 (Meta)</dt><dd>Meta FAIR&#x27;s research model, which predicts cortical activity from video, audio and text features, wrapped with small memory patches.</dd></div>
+<div><dt>Split storage</dt><dd>Small summaries live in the database for lists and charts, while the full prediction matrix lives in a file on disk.</dd></div>
+<div><dt>Cortex viewer</dt><dd>A three.js brain mesh recoloured per second, with region rankings, pinned charts and a plain-language summary.</dd></div></dl>
+      </section>
+
+      <section aria-labelledby="flow-h">
+        <h2 id="flow-h">What happens to an uploaded video</h2>
+        <ol class="steps"><li>The user drops a file in the browser. The API checks its type, streams it to disk with a size cap, and converts a photo or GIF to video.</li>
+<li>A run record is created as queued and the API returns straight away. The interface polls for status and shows the queue and the elapsed time.</li>
+<li>The GPU worker picks up the run, marks it as running and passes the input to Meta&#x27;s TRIBE v2 model.</li>
+<li>The model returns a predicted activity value for every point on the cortex, for every second of input.</li>
+<li>The worker saves the raw matrix to disk, computes small summaries such as per-region averages, and marks the run done. On a failure it records a hint and still frees the GPU.</li>
+<li>The browser fetches the predictions as raw binary and loads them straight into a typed array with no parsing.</li>
+<li>As the video plays, the viewer recolours the cortex for the current second, and the region list and plain-language summary update with it.</li></ol>
+      </section>
+
+      <section aria-labelledby="dec-h">
+        <h2 id="dec-h">Decisions and trade-offs</h2>
+        <div class="decisions"><article class="decision">
+  <h3>One background worker, with the database as the source of truth</h3>
+  <dl>
+    <dt>Why</dt><dd>The GPU can hold one pipeline at a time, so parallel workers would only fight over memory. A worker inside the API process keeps setup to a database and a web server.</dd>
+    <dt>Instead of</dt><dd>A separate task queue with Redis, or a separate worker process.</dd>
+    <dt>The cost</dt><dd>There is no horizontal scaling and the queue lives in memory. I covered the durability gap by re-queuing unfinished runs from the database on startup.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Runtime patches to the model library instead of a fork</h3>
+  <dl>
+    <dt>Why</dt><dd>Half precision for the video encoder, bounded audio windows and reuse of repeated frames were enough to fit an 8 GB GPU without maintaining a fork of a moving research codebase.</dd>
+    <dt>Instead of</dt><dd>Forking the library, or requiring a bigger GPU.</dd>
+    <dt>The cost</dt><dd>Patches are fragile to upstream changes. I kept each one small, idempotent, documented and switchable, so a break would be loud and easy to find.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Send predictions as raw binary, not JSON</h3>
+  <dl>
+    <dt>Why</dt><dd>Twenty thousand floats per frame as JSON is several times larger and slow to parse. Raw bytes go straight into a typed array and then into the colour buffer.</dd>
+    <dt>Instead of</dt><dd>JSON arrays, or streaming one frame at a time.</dd>
+    <dt>The cost</dt><dd>It is a custom contract, and the whole run loads at once, which is fine for clips a few minutes long.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Convert unsupported inputs at upload time</h3>
+  <dl>
+    <dt>Why</dt><dd>The model reads only video, audio and text. Converting at the edge keeps the worker and the model path unchanged.</dd>
+    <dt>Instead of</dt><dd>Rejecting photos, or adding a custom image path to the model.</dd>
+    <dt>The cost</dt><dd>A still photo becomes a few seconds of video, which only approximates how people look at a photo.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Generate my own word timings instead of running transcription</h3>
+  <dl>
+    <dt>Why</dt><dd>For text and captions I already know the words. Synthesising speech in short pieces and spreading timings by word length skips a slow transcription step, and avoids a built-in text path that misdetected the language of short English text.</dd>
+    <dt>Instead of</dt><dd>Letting the model&#x27;s pipeline transcribe the generated speech, or using its own text path.</dd>
+    <dt>The cost</dt><dd>The timings are estimated rather than measured, though they sit well within the model&#x27;s one-second time step.</dd>
+  </dl>
+</article></div>
+      </section>
+
+      <section aria-labelledby="hard-h">
+        <h2 id="hard-h">The hard parts</h2>
+        <ul class="hard"><li><h3>Fitting a multi-model pipeline on an 8 GB GPU</h3><p>The video encoder at full precision was larger than the whole GPU. I cast it to half precision at load time and cast its inputs to match, set extractor batch sizes to the minimum, and made each extractor&#x27;s device configurable, with CPU as a slow fallback.</p></li>
+<li><h3>Out-of-memory errors on long audio</h3><p>The audio model&#x27;s attention memory grows with the square of the input length, so a clip of about a minute ran out of memory. I split audio into equal windows of bounded length, equal so there&#x27;s no tiny last piece, and joined the outputs, which matches how the model already handles long audio.</p></li>
+<li><h3>GPU memory leaking after failed runs</h3><p>The library unloaded its models after a successful run but not after a failure, and the exception itself kept tensors alive. The worker now unloads every extractor, clears caches and drops the traceback&#x27;s references before reporting the error, so one bad run doesn&#x27;t break the next one.</p></li>
+<li><h3>Photos running as slowly as real videos</h3><p>A photo becomes many identical clips, and reusing the encoder output should have made it fast, but exact frame comparison never matched because video compression adds tiny noise. For still inputs only, I switched to a tolerant comparison; real videos still need an exact match so no motion is ever mistaken for a repeat.</p></li></ul>
+      </section>
+
+      <section aria-labelledby="next-h">
+        <h2 id="next-h">What I'd do next</h2>
+        <ul class="ticks ticks--plain"><li>A separate worker process with a durable queue, cancellation and progress reporting for each pipeline stage.</li>
+<li>Push status updates to the browser instead of polling.</li>
+<li>Cache results by content so the same clip never runs twice, and compare two runs side by side.</li>
+<li>Package the GPU backend in a container so setup is one step instead of several manual ones.</li></ul>
+      </section>
+
+      <blockquote class="takeaway">
+        <p class="kicker">What I took away</p>
+        <p>Wrapping a research model is mostly about respecting its constraints and then hiding them from the user. The GPU&#x27;s memory limit set the serving design, and the size of the output set the transfer format. The part I&#x27;d carry forward is the translation layer: a twenty-thousand-column matrix only becomes useful when someone without a neuroscience background can read it, and when synthetic data and simplifications are labelled honestly.</p>
+      </blockquote>
+    </div>
+
+    <aside class="case-side">
+      <dl class="facts">
+        <dt>Role</dt><dd>Sole engineer: model serving, media pipeline, API, 3D visualisation (the TRIBE v2 model is Meta&#x27;s)</dd>
+        <dt>Context</dt><dd>Internal R&amp;D tool</dd>
+        <dt>Status</dt><dd>Working prototype, runs locally</dd>
+        <dt>Stack</dt><dd>Python, FastAPI, PyTorch, Meta TRIBE v2 (with V-JEPA 2, Wav2Vec-BERT, LLaMA 3.2), PostgreSQL, ffmpeg, nilearn, React and TypeScript, three.js</dd>
+      </dl>
+      <nav class="toc" aria-label="On this page">
+        <p class="kicker">On this page</p>
+        <ul>
+          <li><a href="#problem-h">The problem</a></li>
+          <li><a href="#approach-h">How I thought about it</a></li>
+          <li><a href="#built-h">What I built</a></li>
+          <li><a href="#arch-h">Architecture</a></li>
+          <li><a href="#flow-h">Key flow</a></li>
+          <li><a href="#dec-h">Decisions</a></li>
+          <li><a href="#hard-h">Hard parts</a></li>
+        </ul>
+      </nav>
+    </aside>
+  </div>
+
+  <nav class="wrap pager" aria-label="More projects">
+    <a class="prev" href="hybrid-search-rag.html"><span>Previous</span>A document chatbot that would rather say it doesn&#x27;t know</a><a class="next" href="inkstone.html"><span>Next</span>A PDF editor that actually deletes what it redacts</a>
+  </nav>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <p class="logo">Kartikey Shaurya</p>
+      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="../index.html">Front page</a></li>
+        <li><a href="../projects/index.html">All projects</a></li>
+        <li><a href="../index.html#experience">Experience</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Elsewhere</h4>
+      <ul>
+        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+      </ul>
+    </div>
+    <p class="fine">
+      <span>© 2026 Kartikey Shaurya</span>
+      <span>Most client names and internal details are withheld. Architecture is shown at the component level.</span>
+    </p>
+  </div>
+</footer>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: "strict",
+    theme: "base",
+    flowchart: { curve: "basis", htmlLabels: true },
+    themeVariables: {
+      fontFamily: "Schibsted Grotesk, Helvetica Neue, Arial, sans-serif",
+      fontSize: "15px",
+      background: "#faedda",
+      primaryColor: "#fffdf9",
+      primaryBorderColor: "#1c1a17",
+      primaryTextColor: "#1c1a17",
+      lineColor: "#a51c30",
+      secondaryColor: "#faedda",
+      tertiaryColor: "#fffbf4",
+      clusterBkg: "#fffbf4",
+      clusterBorder: "#b9b8ad",
+      edgeLabelBackground: "#faedda"
+    }
+  });
+</script>
+</body>
+</html>

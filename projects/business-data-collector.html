@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Business Data Collector: One service that turns messy public sources into clean answers | Kartikey Shaurya</title>
+  <meta name="description" content="A dedicated collector service behind the shipper approval agent. It owns every outside lookup, caches and paces each source, and reports a refusal as an answer instead of a crash.">
+  <meta name="author" content="Kartikey Shaurya">
+  <link rel="canonical" href="https://kartikeyshaurya.github.io/projects/business-data-collector.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Business Data Collector: One service that turns messy public sources into clean answers | Kartikey Shaurya">
+  <meta property="og:description" content="A dedicated collector service behind the shipper approval agent. It owns every outside lookup, caches and paces each source, and reports a refusal as an answer instead of a crash.">
+  <meta property="og:url" content="https://kartikeyshaurya.github.io/projects/business-data-collector.html">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="wrap util">
+    <ul>
+      <li>Chandigarh, India</li>
+    </ul>
+    <ul>
+      <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
+      <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a class="pdf" href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+    </ul>
+  </div>
+
+  <div class="wrap masthead masthead--slim">
+    <a class="logo" href="../index.html">Kartikey Shaurya</a>
+    <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
+  </div>
+
+  <nav class="primary" aria-label="Sections">
+    <ul>
+      <li><a href="../index.html">Front page</a></li>
+      <li><a href="../projects/index.html" class="is-active" aria-current="page">Projects</a></li>
+      <li><a href="../index.html#experience">Experience</a></li>
+      <li><a href="../index.html#about">About</a></li>
+      <li><a class="cta" href="../index.html#hire">Hire me</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" class="case">
+  <section class="wrap case-head">
+    <p class="kicker"><a href="index.html">Projects</a> <span class="fmt">Freight &amp; Logistics AI</span></p>
+    <h1>One service that turns messy public sources into clean answers</h1>
+    <p class="dek">A dedicated collector service behind the shipper approval agent. It owns every outside lookup, caches and paces each source, and reports a refusal as an answer instead of a crash.</p>
+    <p class="byline">By <b>Kartikey Shaurya</b> · Business Data Collector · Creed Infotech, for a US freight brokerage</p>
+  </section>
+
+  <div class="wrap case-grid">
+    <div class="case-body">
+
+      <section aria-labelledby="problem-h">
+        <h2 id="problem-h">The problem</h2>
+        <div class="prose"><p>Verifying a new shipper means checking its state business registration, its business identity, its public listings and its own website. Every one of those sources works differently. Some have official APIs or open-data portals, some only have a web search form, some are single-page apps, and some are behind a paywall. Every US state runs its registry its own way.</p>
+<p>My shipper approval agent needed these facts, but putting all of that variety inside a credit-decision system would have made the most important code depend on the most fragile code. Lookups are slow, they fail in many different ways, and they carry terms-of-use obligations that someone has to own.</p></div>
+      </section>
+
+      <section aria-labelledby="approach-h">
+        <h2 id="approach-h">How I thought about it</h2>
+        <div class="prose prose--lead"><p>The first decision was about where this code should live. The lookup layer was the part most likely to break and the part with the most compliance exposure, so I took it out of the decision system entirely and gave it its own service with clean JSON contracts. The agent now asks a question and gets back one of four answers: found, not found, blocked, or error. If a source is replaced with a licensed API tomorrow, the agent does not change.</p>
+<p>The second principle was that <b>a refusal is an answer, not an obstacle.</b> When a source declines an automated request, the service reports &quot;blocked&quot;, logs it for monitoring and never caches it. It does not try to get around the block. Downstream, the agent treats &quot;blocked&quot; as &quot;a person can get this&quot; and opens a manual evidence slot. That kept the system on the right side of each source&#x27;s terms and made the failure mode useful.</p>
+<p>Compliance needed to be something you can review, not something scattered through code. Before writing providers, I classified every US jurisdiction, plus DC and Canada, by how it can be accessed: official API, bulk open data, web form, or not automatable at all, along with whether automation is allowed. That classification lives in one data file. Adding an open-data state is configuration only, and the jurisdictions marked not automatable are never automated.</p>
+<p>Because each live lookup is slow and costly for the source, caching was part of the design from the start rather than an optimisation. I used a short in-process cache to absorb duplicate calls, a durable search log that doubles as a day-long cache and survives restarts, and only then a live request. Each provider can be switched off independently, and that check happens after the cache, so turning collection off stops new requests without hiding what was already gathered.</p></div>
+      </section>
+
+      <section aria-labelledby="built-h">
+        <h2 id="built-h">What I built</h2>
+        <ul class="ticks"><li>A FastAPI service with one independent provider per source type: business identity, public listings, state registries and company websites.</li>
+<li>A registry for state lookups that resolves each jurisdiction to a dedicated provider, a configuration-only open-data provider, or a manual-lookup answer.</li>
+<li>A two-layer cache in front of every provider, with failures logged but never cached, so a single bad moment cannot pin a query to failure for a day.</li>
+<li>A uniform error contract registered once for the whole app, so every provider reports blocked, disabled and upstream failures the same way.</li>
+<li>Worker queues for slow lookups, chosen per provider by a single flag, so moving a source between inline and queued execution is a configuration change.</li>
+<li>A website fetcher that only reaches public internet addresses, on the first request and every redirect, so it cannot be turned against internal systems.</li>
+<li>Status endpoints and live health checks per provider that report last success, cache age and the blocked rate, which is the metric that matters most.</li>
+<li>A hermetic test suite with recorded fixtures and pure parsers, so no test touches the network or a real database.</li></ul>
+      </section>
+
+      <section aria-labelledby="arch-h">
+        <h2 id="arch-h">How it fits together</h2>
+        <figure class="diagram">
+          <pre class="mermaid">flowchart LR
+  AG[&quot;Shipper approval&lt;br/&gt;agent&quot;] --&gt; API[&quot;Collector API&quot;]
+  API --&gt; L1[&quot;Short-lived&lt;br/&gt;memory cache&quot;]
+  API --&gt; LOG[(&quot;Search log and&lt;br/&gt;company dossier&quot;)]
+  API --&gt; Q[(&quot;Queue and&lt;br/&gt;registry cache&quot;)]
+  Q --&gt; WK[&quot;Lookup workers&quot;]
+  API --&gt; REG[&quot;Official registry APIs&lt;br/&gt;and open data&quot;]
+  WK --&gt; FORM[&quot;Registry web forms&quot;]
+  API --&gt; BIZ[&quot;Business-data&lt;br/&gt;providers&quot;]
+  API --&gt; WEB[&quot;Public company&lt;br/&gt;websites&quot;]</pre>
+          <figcaption>The agent sees one contract; the collector decides whether each question is answered from cache, inline, or on a worker.</figcaption>
+        </figure>
+        <dl class="components"><div><dt>Collector API</dt><dd>One route group per provider, all protected the same way, each following cache, switch check, pacing, live lookup and persist in that order.</dd></div>
+<div><dt>Memory cache</dt><dd>A small, bounded cache that absorbs duplicate concurrent requests for the same company.</dd></div>
+<div><dt>Search log and dossier</dt><dd>A durable record of every lookup, including failures, that also serves as the day-long cache, plus a company record that accumulates everything ever seen.</dd></div>
+<div><dt>Queue and workers</dt><dd>Run slow registry lookups outside the API process, and degrade to a clear timeout answer if no worker is available.</dd></div>
+<div><dt>Jurisdiction classification</dt><dd>A reviewed data file that grades every registry by access method and records whether automation is allowed.</dd></div></dl>
+      </section>
+
+      <section aria-labelledby="flow-h">
+        <h2 id="flow-h">What happens when the agent asks for a company&#x27;s registration</h2>
+        <ol class="steps"><li>The agent sends a company name to the registry endpoint, either for one state or for all of them.</li>
+<li>For a search across every jurisdiction, the service fans out with a concurrency cap, and each state&#x27;s failure becomes that state&#x27;s own error result rather than sinking the response.</li>
+<li>Each state checks the registry cache first. If the cache is down, the lookup just becomes slower; it never fails because of the cache.</li>
+<li>States with official APIs or open data are answered inline. States that need a web form go to a worker, and the API waits up to a deadline.</li>
+<li>Jurisdictions classified as not automatable return a manual-lookup answer immediately.</li>
+<li>Results are merged and de-duplicated, successful answers are cached, and lookup history is written in the background so it never slows the response.</li>
+<li>The agent receives the merged results with a per-state outcome list it can show to an operator.</li></ol>
+      </section>
+
+      <section aria-labelledby="dec-h">
+        <h2 id="dec-h">Decisions and trade-offs</h2>
+        <div class="decisions"><article class="decision">
+  <h3>A separate collector service instead of lookups inside the agent.</h3>
+  <dl>
+    <dt>Why</dt><dd>The lookup layer is the most fragile and most compliance-sensitive part. Isolating it made the agent smaller and easier to test and gave one place to own pacing and caching.</dd>
+    <dt>Instead of</dt><dd>Keeping the lookup code inside the agent, where it first lived.</dd>
+    <dt>The cost</dt><dd>A network hop, a service key to manage and two services to deploy, with a contract that has to be documented carefully.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Never work around a block.</h3>
+  <dl>
+    <dt>Why</dt><dd>A refusal is the source&#x27;s answer. Reporting it honestly respects its terms, and the consumer already has a manual path for it.</dd>
+    <dt>Instead of</dt><dd>Trying harder: more aggressive automation or third-party solving services.</dd>
+    <dt>The cost</dt><dd>A lower hit rate on some sources, made up for by caching and the manual evidence path.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Compliance as a reviewed data file.</h3>
+  <dl>
+    <dt>Why</dt><dd>With every jurisdiction accessible in a different way, classifying them first made the policy reviewable in one place, and made adding an open-data state a configuration change.</dd>
+    <dt>Instead of</dt><dd>A long per-state chain of conditions, or treating every state as automatable.</dd>
+    <dt>The cost</dt><dd>A file that must be kept current and re-verified against each source&#x27;s live terms.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Check the on/off switch after the cache, and never cache failures.</h3>
+  <dl>
+    <dt>Why</dt><dd>Turning collection off should stop new requests without hiding what has already been gathered. Not caching failures stops one transient problem from lasting a day.</dd>
+    <dt>Instead of</dt><dd>A single cache for everything, including negative results.</dd>
+    <dt>The cost</dt><dd>Two expiries to reason about, and a bounded memory cache so keys that are never read again still get freed.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Inline or queued execution chosen by a provider flag.</h3>
+  <dl>
+    <dt>Why</dt><dd>Fast API-backed sources should not pay queue latency, and slow ones should not block the API or share its process.</dd>
+    <dt>Instead of</dt><dd>Everything on a queue, or everything inline.</dd>
+    <dt>The cost</dt><dd>The API waits on queued jobs up to a deadline, which is simpler than callbacks but holds a request open.</dd>
+  </dl>
+</article></div>
+      </section>
+
+      <section aria-labelledby="hard-h">
+        <h2 id="hard-h">The hard parts</h2>
+        <ul class="hard"><li><h3>A background write that hurt latency, then reliability</h3><p>Writing lookup history inline made every all-states search wait on dozens of serial writes. Making the writes fire-and-forget exposed two new problems: background tasks could be garbage-collected mid-flight, and too many concurrent writes could exhaust the connection pool. I kept strong references to the tasks and bounded them with a small semaphore.</p></li>
+<li><h3>Upstream data that lies by omission</h3><p>One source consistently left out fields, such as the state in an address, that the agent depended on. I documented it instead of papering over it, kept the raw address next to the parsed parts so a bad parse can always be recovered, and had the agent treat that source&#x27;s address as partial evidence.</p></li>
+<li><h3>Keeping the metrics honest on the error path</h3><p>The blocked rate is the most important health signal, but a failed request&#x27;s transaction would normally roll back its own log row. I made the service commit the failure record before raising the error, so the metric survives exactly the cases it exists to measure.</p></li>
+<li><h3>Tests that never touch the network</h3><p>The suite disables live collection and zeroes pacing before any test module loads, and patches each network seam where it is defined and wherever it was imported. Parsers are pure functions tested against recorded responses, so the code above the seams runs for real.</p></li></ul>
+      </section>
+
+      <section aria-labelledby="next-h">
+        <h2 id="next-h">What I'd do next</h2>
+        <ul class="ticks ticks--plain"><li>Run linting and the full test suite in CI, not only the image build.</li>
+<li>Move the pacing and memory cache into shared storage so the API can run more than one process.</li>
+<li>Promote more registry states from web forms to official APIs where they exist.</li>
+<li>Evaluate licensed data feeds as the long-term replacement for web lookups.</li></ul>
+      </section>
+
+      <blockquote class="takeaway">
+        <p class="kicker">What I took away</p>
+        <p>When a dependency is unreliable, the best thing you can do for the systems above it is make its failures boring and well named. Giving every outcome a fixed status, treating a refusal as a valid answer, and moving compliance into a reviewed file meant the decision system never had to know how messy the outside world was.</p>
+      </blockquote>
+    </div>
+
+    <aside class="case-side">
+      <dl class="facts">
+        <dt>Role</dt><dd>Main author: service design, provider integrations, caching, deployment</dd>
+        <dt>Context</dt><dd>Creed Infotech, for a US freight brokerage</dd>
+        <dt>Status</dt><dd>Internal service, deployed</dd>
+        <dt>Stack</dt><dd>Python, FastAPI, PostgreSQL, SQLAlchemy, Redis, RQ, Docker Compose, GitLab CI</dd>
+      </dl>
+      <nav class="toc" aria-label="On this page">
+        <p class="kicker">On this page</p>
+        <ul>
+          <li><a href="#problem-h">The problem</a></li>
+          <li><a href="#approach-h">How I thought about it</a></li>
+          <li><a href="#built-h">What I built</a></li>
+          <li><a href="#arch-h">Architecture</a></li>
+          <li><a href="#flow-h">Key flow</a></li>
+          <li><a href="#dec-h">Decisions</a></li>
+          <li><a href="#hard-h">Hard parts</a></li>
+        </ul>
+      </nav>
+    </aside>
+  </div>
+
+  <nav class="wrap pager" aria-label="More projects">
+    <a class="prev" href="valueloads-voice.html"><span>Previous</span>The agent that answers the phone and leaves clean data behind</a><a class="next" href="tms-mcp-server.html"><span>Next</span>A searchable map of a huge API, and a safe key</a>
+  </nav>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <p class="logo">Kartikey Shaurya</p>
+      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="../index.html">Front page</a></li>
+        <li><a href="../projects/index.html">All projects</a></li>
+        <li><a href="../index.html#experience">Experience</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Elsewhere</h4>
+      <ul>
+        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+      </ul>
+    </div>
+    <p class="fine">
+      <span>© 2026 Kartikey Shaurya</span>
+      <span>Most client names and internal details are withheld. Architecture is shown at the component level.</span>
+    </p>
+  </div>
+</footer>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: "strict",
+    theme: "base",
+    flowchart: { curve: "basis", htmlLabels: true },
+    themeVariables: {
+      fontFamily: "Schibsted Grotesk, Helvetica Neue, Arial, sans-serif",
+      fontSize: "15px",
+      background: "#faedda",
+      primaryColor: "#fffdf9",
+      primaryBorderColor: "#1c1a17",
+      primaryTextColor: "#1c1a17",
+      lineColor: "#a51c30",
+      secondaryColor: "#faedda",
+      tertiaryColor: "#fffbf4",
+      clusterBkg: "#fffbf4",
+      clusterBorder: "#b9b8ad",
+      edgeLabelBackground: "#faedda"
+    }
+  });
+</script>
+</body>
+</html>

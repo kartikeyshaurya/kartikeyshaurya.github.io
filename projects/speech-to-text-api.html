@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Speech-to-Text API: An OpenAI-compatible transcription service that runs on plain CPUs | Kartikey Shaurya</title>
+  <meta name="description" content="I built a self-hosted speech-to-text platform that existing OpenAI client code can call unchanged. It runs NVIDIA&#x27;s Parakeet model on CPU and turns a model that hears 30 seconds at a time into a service that handles recordings hours long.">
+  <meta name="author" content="Kartikey Shaurya">
+  <link rel="canonical" href="https://kartikeyshaurya.github.io/projects/speech-to-text-api.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Speech-to-Text API: An OpenAI-compatible transcription service that runs on plain CPUs | Kartikey Shaurya">
+  <meta property="og:description" content="I built a self-hosted speech-to-text platform that existing OpenAI client code can call unchanged. It runs NVIDIA&#x27;s Parakeet model on CPU and turns a model that hears 30 seconds at a time into a service that handles recordings hours long.">
+  <meta property="og:url" content="https://kartikeyshaurya.github.io/projects/speech-to-text-api.html">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="wrap util">
+    <ul>
+      <li>Chandigarh, India</li>
+    </ul>
+    <ul>
+      <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
+      <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a class="pdf" href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+    </ul>
+  </div>
+
+  <div class="wrap masthead masthead--slim">
+    <a class="logo" href="../index.html">Kartikey Shaurya</a>
+    <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
+  </div>
+
+  <nav class="primary" aria-label="Sections">
+    <ul>
+      <li><a href="../index.html">Front page</a></li>
+      <li><a href="../projects/index.html" class="is-active" aria-current="page">Projects</a></li>
+      <li><a href="../index.html#experience">Experience</a></li>
+      <li><a href="../index.html#about">About</a></li>
+      <li><a class="cta" href="../index.html#hire">Hire me</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" class="case">
+  <section class="wrap case-head">
+    <p class="kicker"><a href="index.html">Projects</a> <span class="fmt">Applied ML &amp; AI Infrastructure</span></p>
+    <h1>An OpenAI-compatible transcription service that runs on plain CPUs</h1>
+    <p class="dek">I built a self-hosted speech-to-text platform that existing OpenAI client code can call unchanged. It runs NVIDIA&#x27;s Parakeet model on CPU and turns a model that hears 30 seconds at a time into a service that handles recordings hours long.</p>
+    <p class="byline">By <b>Kartikey Shaurya</b> · Speech-to-Text API · Solo build</p>
+  </section>
+
+  <div class="wrap case-grid">
+    <div class="case-body">
+
+      <section aria-labelledby="problem-h">
+        <h2 id="problem-h">The problem</h2>
+        <div class="prose"><p>Hosted transcription APIs charge per minute and send audio off the premises. Self-hosting on GPUs is expensive to keep running around the clock, and this workload is mostly steady batch work: meetings, calls and recordings that run from a few minutes to several hours, where nobody needs the answer in milliseconds.</p>
+<p>The people who feel this are developers who already have code written against OpenAI&#x27;s transcription API and don&#x27;t want to rewrite it, organisation owners who need to issue keys and see usage, and operators who have to size and run the service on ordinary hardware. The goal was to run a modern open speech model on commodity CPUs, keep the OpenAI contract exactly, and make long recordings reliable.</p></div>
+      </section>
+
+      <section aria-labelledby="approach-h">
+        <h2 id="approach-h">How I thought about it</h2>
+        <div class="prose prose--lead"><p>The first thing I noticed was that the workload was bound by throughput, not latency. Most audio is batch work where minutes of turnaround are fine. That made CPU inference a real option: several core-pinned instances of Parakeet in ONNX Runtime on one large VM, with a predictable cost and no GPU scheduling. I treated the throughput estimate as a hypothesis, not a fact, and wrote a benchmark tool so sizing gets settled on the target hardware before anyone commits to it.</p>
+<p>The constraint that shaped everything else was that the ONNX export of the model only handles about 30 seconds of audio per call. So the core problem became <b>the seams</b>: how to cut hours of audio into short pieces and join them back into one transcript without splitting a word or repeating one. I settled on cutting at the middle of a detected silence near each target boundary, adding a short overlap between chunks, and giving every word exactly one owner when stitching, based on which side of the overlap midpoint its centre falls. I kept the planner and the stitcher as pure functions, so I could test the edge cases without running ffmpeg or the model.</p>
+<p>For the API, I chose to copy the OpenAI contract instead of designing my own. Adoption then costs nothing: a client changes one base URL. It also pushed me towards a clean internal design. One canonical timestamped result is stored per job, and every output format (plain text, JSON, SRT, VTT, verbose JSON with word timings) is rendered from it when it is read.</p>
+<p>The principle I settled on was <b>one durable path for every job</b>. Even a short synchronous request is a queued job that the gateway waits on with a time budget. If the budget runs out, the caller gets a job ID to poll instead of an error, so work is never lost. Separate queues mean a two-hour batch recording can never block a short request that someone is sitting and waiting for.</p></div>
+      </section>
+
+      <section aria-labelledby="built-h">
+        <h2 id="built-h">What I built</h2>
+        <ul class="ticks"><li>An OpenAI-compatible transcription and translation API with model aliases, all five response formats, segment and word timestamps, and errors in OpenAI&#x27;s shape.</li>
+<li>A long-audio pipeline that normalises audio with ffmpeg, finds silences, plans overlapping chunks, transcribes them in parallel and stitches one timestamped transcript.</li>
+<li>An engine pool that caps in-flight inference so the ONNX threads never oversubscribe the CPU cores, and that also spreads load across engine instances without a separate load balancer.</li>
+<li>Three isolated work queues on Arq and Redis, for interactive requests, batch jobs and webhook delivery, each with its own workers.</li>
+<li>Multi-tenant platform features: hashed API keys with scopes, per-key rate limits, monthly quotas billed on the real decoded audio duration, and idempotent submissions.</li>
+<li>Signed webhooks with retries, exponential backoff and a visible dead-letter state, plus a guard that refuses to deliver to private network addresses.</li>
+<li>Failure recovery: bounded retries for transient engine errors, immediate non-retried failure for undecodable audio, a reaper for jobs left behind by a crashed worker, and a graceful drain on deploy.</li>
+<li>A React developer console for signup, key management, a playground, job history, usage and webhook testing.</li></ul>
+      </section>
+
+      <section aria-labelledby="arch-h">
+        <h2 id="arch-h">How it fits together</h2>
+        <figure class="diagram">
+          <pre class="mermaid">flowchart LR
+  A[&quot;Client&lt;br/&gt;(OpenAI SDK)&quot;] --&gt; B[&quot;Edge proxy&lt;br/&gt;TLS, upload cap&quot;]
+  C[&quot;Developer console&quot;] --&gt; B
+  B --&gt; D[&quot;API gateway&lt;br/&gt;auth, quota, submit&quot;]
+  D --&gt; E[&quot;Job database&quot;]
+  D --&gt; F[&quot;Object storage&lt;br/&gt;audio and results&quot;]
+  D --&gt; G[&quot;Priority queues&lt;br/&gt;interactive, batch&quot;]
+  G --&gt; H[&quot;Transcription workers&lt;br/&gt;normalise, chunk, stitch&quot;]
+  H --&gt; I[&quot;Parakeet engine pool&lt;br/&gt;ONNX on CPU&quot;]
+  H --&gt; F
+  H --&gt; E
+  H --&gt; J[&quot;Webhook queue&lt;br/&gt;and worker&quot;]
+  J --&gt; K[&quot;Customer endpoint&quot;]</pre>
+          <figcaption>Requests pass through one gateway into durable queues, and workers turn long audio into short chunks for a pool of CPU engine instances.</figcaption>
+        </figure>
+        <dl class="components"><div><dt>API gateway</dt><dd>Checks keys, limits and quotas, stores the upload, creates the job and decides whether the caller waits or gets a job ID.</dd></div>
+<div><dt>Priority queues</dt><dd>Separate queues for interactive and batch work, so long recordings never sit in front of a short request.</dd></div>
+<div><dt>Transcription workers</dt><dd>Normalise the audio, plan silence-aware chunks, fan them out to the engines and stitch the results into one transcript.</dd></div>
+<div><dt>Parakeet engine pool</dt><dd>Several CPU-pinned instances of the ONNX model behind a slot pool that bounds how much inference runs at once.</dd></div>
+<div><dt>Database and object storage</dt><dd>The database holds jobs, tenants and the usage ledger, while object storage holds the audio and the canonical result.</dd></div>
+<div><dt>Webhook worker</dt><dd>Delivers signed completion notices on its own queue, with backoff and a dead-letter state, so retries never use transcription capacity.</dd></div></dl>
+      </section>
+
+      <section aria-labelledby="flow-h">
+        <h2 id="flow-h">What happens to an uploaded recording</h2>
+        <ol class="steps"><li>A client submits audio through the OpenAI SDK. The gateway checks the key, its rate limit and the tenant&#x27;s monthly quota.</li>
+<li>A small file with no webhook goes to the interactive queue and the caller waits. A large file, or any request with a webhook, gets a job ID straight away and goes to the batch queue.</li>
+<li>The audio is saved to object storage and a job record is created, so nothing depends on the request staying open.</li>
+<li>A worker normalises the audio to the format the model expects, measures its exact duration, and fails undecodable files immediately without retrying.</li>
+<li>The worker finds silences, plans overlapping chunks of about 30 seconds, and sends them in parallel to the engine pool within its slot limit.</li>
+<li>Chunk results are shifted to global time, each word in an overlap is kept exactly once, and one canonical transcript is stored.</li>
+<li>The job is metered on its real audio duration and a signed webhook is queued, with retries if the customer&#x27;s endpoint is down.</li>
+<li>The client can fetch the result later in any format, rendered from the stored transcript.</li></ol>
+      </section>
+
+      <section aria-labelledby="dec-h">
+        <h2 id="dec-h">Decisions and trade-offs</h2>
+        <div class="decisions"><article class="decision">
+  <h3>Run Parakeet on CPU through ONNX Runtime</h3>
+  <dl>
+    <dt>Why</dt><dd>The workload is steady batch work, not latency-critical. Several core-pinned CPU instances on one VM can cover it at a predictable cost, and Parakeet gives segment and word timestamps out of the box.</dd>
+    <dt>Instead of</dt><dd>Whisper on a GPU, or a hosted transcription API.</dd>
+    <dt>The cost</dt><dd>Each stream is slower, real-time use is only best effort, and the capacity estimate has to be confirmed by benchmarking on the target hardware.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Copy the OpenAI API contract exactly</h3>
+  <dl>
+    <dt>Why</dt><dd>Existing client code works by changing one base URL, and the contract pushed me towards a single canonical result that every format renders from.</dd>
+    <dt>Instead of</dt><dd>A custom API designed around this service.</dd>
+    <dt>The cost</dt><dd>The service inherits OpenAI&#x27;s quirks, such as accepting a Whisper model name that doesn&#x27;t actually select Whisper.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Silence-aware chunking with one owner per word</h3>
+  <dl>
+    <dt>Why</dt><dd>Cutting at silences avoids splitting words, the overlap is a safety margin, and the ownership rule means nothing is duplicated or lost at a seam. Both functions are pure, so they are easy to test.</dd>
+    <dt>Instead of</dt><dd>Fixed 30-second windows, or a neural voice-activity detector from day one.</dd>
+    <dt>The cost</dt><dd>Energy-based silence detection is crude in noisy audio, so there is a capped hard cut as a fallback. The planner accepts any source of silences, so a better detector can drop in later.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Treat a synchronous request as a queued job plus a wait</h3>
+  <dl>
+    <dt>Why</dt><dd>Every job takes the same durable path. If the wait runs over budget, the caller gets a job ID to poll instead of an error.</dd>
+    <dt>Instead of</dt><dd>A separate in-process path that calls the engine directly for short files.</dd>
+    <dt>The cost</dt><dd>Synchronous latency includes queue overhead, and the gateway holds a connection open while it waits.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>A slot pool as both concurrency limit and load balancer</h3>
+  <dl>
+    <dt>Why</dt><dd>ONNX Runtime starts threads per session, and too many parallel requests thrash the cores and lower throughput. One pool bounds in-flight work and spreads it across instances.</dd>
+    <dt>Instead of</dt><dd>A reverse proxy in front of the engines, or unbounded concurrency.</dd>
+    <dt>The cost</dt><dd>The bound is per worker process today, so a truly global limit needs a shared semaphore.</dd>
+  </dl>
+</article></div>
+      </section>
+
+      <section aria-labelledby="hard-h">
+        <h2 id="hard-h">The hard parts</h2>
+        <ul class="hard"><li><h3>Turning a 30-second model into an hours-long service</h3><p>Chunking was easy; the seams were the hard part. I combined silence-midpoint cuts, a short overlap and a deterministic rule for which chunk owns each word. Because both the planner and the stitcher are pure functions, I could work through edge cases in unit tests without ffmpeg or the model.</p></li>
+<li><h3>Not oversubscribing the CPU</h3><p>More parallel inference made things slower, not faster, once the ONNX threads started competing for cores. I pinned thread counts per engine instance, put every request through a slot pool, and wrote a benchmark that compares per-request and aggregate speed to decide between fewer large instances and more small ones.</p></li>
+<li><h3>One system for waiting callers and multi-hour jobs</h3><p>An SDK caller expects a transcript in the response, while a two-hour file can&#x27;t be served that way. I put both on the same job model and split them by queue, with an explicit routing rule and a graceful downgrade to a job ID when a wait runs long.</p></li>
+<li><h3>Webhooks that are safe and dependable</h3><p>Tenant-supplied URLs are a risk, so they are checked against private network ranges when submitted and again at delivery. Every attempt is recorded, retries back off, and a delivery that keeps failing is marked dead where it can be seen instead of being dropped silently.</p></li></ul>
+      </section>
+
+      <section aria-labelledby="next-h">
+        <h2 id="next-h">What I'd do next</h2>
+        <ul class="ticks ticks--plain"><li>A global concurrency limit shared across worker processes, with a reserved share for interactive traffic.</li>
+<li>A neural voice-activity detector such as Silero for noisy audio; the chunk planner already accepts any source of silences.</li>
+<li>Per-tenant fairness inside the batch queue, so one tenant&#x27;s large backlog can&#x27;t crowd out everyone else.</li>
+<li>Metrics and a word-error-rate test set per language, so changes to the model or the chunking are measured instead of assumed.</li></ul>
+      </section>
+
+      <blockquote class="takeaway">
+        <p class="kicker">What I took away</p>
+        <p>Most of the engineering in an ML service lives around the model, not inside it. Here the model was a fixed 30-second box, and the product was everything that made it safe to hand it hours of audio: deterministic seams, bounded concurrency and one durable path for every job. I&#x27;d carry two habits forward: keep the tricky logic in pure functions that are easy to test, and treat every capacity number as a hypothesis until it has been benchmarked on the real hardware.</p>
+      </blockquote>
+    </div>
+
+    <aside class="case-side">
+      <dl class="facts">
+        <dt>Role</dt><dd>Sole engineer: model serving, audio pipeline, API, queueing, developer console</dd>
+        <dt>Context</dt><dd>Solo build</dd>
+        <dt>Status</dt><dd>Production-ready MVP for a single VM</dd>
+        <dt>Stack</dt><dd>Python, FastAPI, NVIDIA Parakeet on ONNX Runtime, Arq and Redis, PostgreSQL, MinIO (S3 API), ffmpeg, React and TypeScript, Caddy, Docker Compose</dd>
+      </dl>
+      <nav class="toc" aria-label="On this page">
+        <p class="kicker">On this page</p>
+        <ul>
+          <li><a href="#problem-h">The problem</a></li>
+          <li><a href="#approach-h">How I thought about it</a></li>
+          <li><a href="#built-h">What I built</a></li>
+          <li><a href="#arch-h">Architecture</a></li>
+          <li><a href="#flow-h">Key flow</a></li>
+          <li><a href="#dec-h">Decisions</a></li>
+          <li><a href="#hard-h">Hard parts</a></li>
+        </ul>
+      </nav>
+    </aside>
+  </div>
+
+  <nav class="wrap pager" aria-label="More projects">
+    <a class="prev" href="tutoring-ops-platform.html"><span>Previous</span>One database behind a tutoring company&#x27;s staff and families</a><a class="next" href="face-verification.html"><span>Next</span>Checking the selfie against the licence, and explaining the retake</a>
+  </nav>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <p class="logo">Kartikey Shaurya</p>
+      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="../index.html">Front page</a></li>
+        <li><a href="../projects/index.html">All projects</a></li>
+        <li><a href="../index.html#experience">Experience</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Elsewhere</h4>
+      <ul>
+        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+      </ul>
+    </div>
+    <p class="fine">
+      <span>© 2026 Kartikey Shaurya</span>
+      <span>Most client names and internal details are withheld. Architecture is shown at the component level.</span>
+    </p>
+  </div>
+</footer>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: "strict",
+    theme: "base",
+    flowchart: { curve: "basis", htmlLabels: true },
+    themeVariables: {
+      fontFamily: "Schibsted Grotesk, Helvetica Neue, Arial, sans-serif",
+      fontSize: "15px",
+      background: "#faedda",
+      primaryColor: "#fffdf9",
+      primaryBorderColor: "#1c1a17",
+      primaryTextColor: "#1c1a17",
+      lineColor: "#a51c30",
+      secondaryColor: "#faedda",
+      tertiaryColor: "#fffbf4",
+      clusterBkg: "#fffbf4",
+      clusterBorder: "#b9b8ad",
+      edgeLabelBackground: "#faedda"
+    }
+  });
+</script>
+</body>
+</html>

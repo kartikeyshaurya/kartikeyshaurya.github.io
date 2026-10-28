@@ -1,0 +1,150 @@
+{
+  "slug": "freightsense",
+  "theme": "freight",
+  "order": 6,
+  "title": "FreightSense",
+  "headline": "One processing spine for every freight back-office check",
+  "dek": "A multi-tenant platform that turns call transcripts, carrier invoices and receivables records into scored, explainable results, with a person reviewing exactly where the system is unsure.",
+  "summary": "Multi-tenant AI back office for freight: invoices, call QA and AR/AP through one scored, reviewable pipeline.",
+  "client": "Internal product for freight back-office operations",
+  "role": "Sole engineer: product spec, architecture, backend, AI layer, frontend",
+  "status": "MVP",
+  "stack": [
+    "FastAPI",
+    "SQLAlchemy",
+    "PostgreSQL + pgvector",
+    "Celery",
+    "Redis",
+    "Kafka",
+    "LangGraph",
+    "OpenAI",
+    "Langfuse",
+    "React + TypeScript"
+  ],
+  "problem": [
+    "Freight brokers run a lot of manual back-office work: reviewing broker and carrier calls for quality and compliance, checking carrier invoices against rate sheets, bills of lading and proofs of delivery, chasing late payers, and matching lump-sum payments to open invoices. Each check on its own is simple. \"Does subtotal plus tax equal the total?\" is not a hard question.",
+    "The hard part is running dozens of them across three very different inputs (audio, documents and structured records) with audit, human review, tenancy, cost control and a path to retraining, without building a separate service for each one. I wrote a spec covering use cases across four domains: conversation quality, invoice validation, accounts receivable and accounts payable. Then I needed the system that runs all of them."
+  ],
+  "approach": [
+    "What I noticed first was that the use cases differed at the input and almost nowhere else. Every one of them needed to ingest something, process it, score it, maybe send it to a person, and feed the correction back. So instead of 41 pipelines I built one spine (ingest, process, score, review, analyse, retrain) and pushed all the variation into the workflow definition. Every step and every aggregate returns the same result shape: a tree of parent and child results. That gave me one persistence routine, one review queue, one analytics model and one UI renderer for every domain.",
+    "The constraint that shaped the AI layer was trust in numbers. An LLM will read a blurry invoice confidently and approve it. So rules and exact decimal maths come first, and the LLM only handles the genuinely ambiguous cases, such as language judgement and messy line items. Some signals are gates, not weights: tampering or a duplicate blocks outright, missing fields force review, and an unreadable document stops before OCR even runs. OCR confidence discounts the score instead of being averaged in. <b>Anything between auto-approve and reject goes to a person.</b>",
+    "For the architecture I weighed one service per domain, which was my own original spec, against a modular monolith with task-typed worker pools. The domains shared the result contract, review, auth and tenancy, so separate services on day one would have multiplied deploys and contract versioning for one product with one UI. I kept the boundaries that matter as worker queues and modules with no cross-domain imports, so extracting a domain later is a deployment change, not a rewrite.",
+    "The last principle was that the whole platform should run with zero external services. Every adapter has a deterministic stub, so tests and demos are reproducible and going live is a configuration change. The one place I refused a stub was speech-to-text: a fabricated transcript would silently poison every downstream quality score, so without real credentials it fails loudly instead. Deciding where a stub is safe turned out to be part of the design."
+  ],
+  "built": [
+    "A single ingestion path for audio, documents and records, deduplicated by content hash per tenant, that queues a job and emits an event.",
+    "An invoice validation pipeline: a quality gate, one shared OCR pass, a set of scored validators, hard gates for tampering, duplicates and missing fields, and a weighted composite with approve, review and reject bands that operations can tune without a deploy.",
+    "Conversation quality detectors that run a cheap pattern pre-filter and only call the LLM when it fires, rolled up into an engagement quality score with hard-fail overrides for abuse and compliance breaches.",
+    "Receivables and payables logic: collection-risk scoring with per-factor explanations, a dispute agent with a human gate on high-value cases, payment allocation, and a four-way match across invoice, rate sheet, bill of lading and proof of delivery.",
+    "A human review queue where field corrections and approve or reject decisions are stored as feedback, which is the label stream for retraining.",
+    "A visual pipeline composer whose canvas compiles to a LangGraph graph and actually executes, with human and wait blocks that pause durably and resume from a checkpoint.",
+    "A copilot chat whose tools are scoped to the tenant and which can design pipelines, but only by staging proposals that a person confirms.",
+    "A React operations console built on a custom design system with no UI library."
+  ],
+  "architecture": {
+    "mermaid": "flowchart TB\n  U[\"Operators and<br/>machine clients\"] --> A[\"API<br/>(auth, roles, tenant)\"]\n  A --> I[\"Ingestion spine\"]\n  I --> D{\"Dispatch\"}\n  D -->|\"inline\"| P[\"Single execution path\"]\n  D -->|\"distributed\"| W[\"Task-typed worker pools<br/>STT, OCR, LLM, agents\"]\n  W --> P\n  P --> M[\"Domain pipelines<br/>invoices, calls, AR, AP\"]\n  P --> G[\"Pipeline graph engine<br/>LangGraph\"]\n  M --> R[\"Review queue<br/>and feedback\"]\n  G --> R\n  P --> DB[(\"PostgreSQL + pgvector\")]\n  P --> E[\"Event log<br/>and Kafka\"]\n  P --> L[\"Model adapters<br/>or deterministic stubs\"]",
+    "caption": "Every input, whether audio, document or record, runs through the same spine and the same execution path, inline on a laptop or across worker pools in production.",
+    "components": [
+      {
+        "name": "Ingestion spine",
+        "desc": "Stores each upload once per tenant, creates a job and emits an event, whatever the input type."
+      },
+      {
+        "name": "Execution path",
+        "desc": "One routine for jobs and one for pipeline runs, called identically inline or by workers, so the two modes cannot drift apart."
+      },
+      {
+        "name": "Domain pipelines",
+        "desc": "Pure functions that take fields, transcript turns or records and return the shared result tree."
+      },
+      {
+        "name": "Pipeline graph engine",
+        "desc": "Validates canvas definitions and compiles them to LangGraph, with sandboxed expressions and hard limits on loops, delegation depth and tokens."
+      },
+      {
+        "name": "Review and feedback",
+        "desc": "Turns uncertain or failing results into review items and stores every human correction as a training label."
+      },
+      {
+        "name": "Adapters",
+        "desc": "LLM, OCR, speech-to-text, storage and vector search behind small interfaces, each with a deterministic stub."
+      }
+    ]
+  },
+  "flow": {
+    "title": "What happens to a carrier invoice",
+    "steps": [
+      "A client uploads an invoice against a workflow, and the API checks that the workflow belongs to the caller's tenant.",
+      "The file is hashed and stored once per tenant. A job is queued and the client gets a job ID to poll.",
+      "Processing runs inline or on a worker pool using the same code, and loads the tenant's current weights, field schema and model.",
+      "A quality gate runs first. An unreadable document stops here, before any OCR.",
+      "One OCR pass feeds every validator. Tax and total checks use exact decimal maths, and the LLM handles only language-level judgement.",
+      "The tampering, duplicate and missing-field gates run, then a weighted composite discounted by OCR confidence.",
+      "The full result tree is saved with the weight-profile version and model used, so every verdict can be explained later.",
+      "A clean pass completes the job. Anything uncertain or failing becomes a review item, and the reviewer's corrections are stored as feedback."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "A modular monolith with task-typed worker pools.",
+      "why": "The four domains share the result contract, review, auth and tenancy. Separate services from day one would multiply deploys, tracing and contract versioning for one product with one UI.",
+      "alternative": "One service per domain, which was the original spec.",
+      "tradeoff": "One deployable API is a shared blast radius. I offset that with no cross-domain imports and all communication through events and the shared result, so a domain can be extracted mechanically."
+    },
+    {
+      "decision": "One universal result tree for every step and aggregate.",
+      "why": "One persistence routine, one review queue, one analytics model and one renderer cover every use case, and child results give per-validator lineage and explainability.",
+      "alternative": "Separate result tables per domain.",
+      "tradeoff": "Domain-specific fields live in a JSON payload and are harder to query. Analytics read the common columns (verdict, score, confidence), so I accepted that."
+    },
+    {
+      "decision": "Rules and exact maths first, the LLM only for the ambiguous band.",
+      "why": "Exact checks are cheaper, auditable and deterministic where it matters. The LLM is used for language, and LLM calls are cached on a hash of their input.",
+      "alternative": "LLM extraction and judgement for everything.",
+      "tradeoff": "Pattern pre-filters have recall gaps, and some detectors still need the LLM on every transcript."
+    },
+    {
+      "decision": "Gates that block, separate from weights that score.",
+      "why": "Some signals must never be averaged away. A tampered or duplicate invoice is a hard stop no matter how good the rest looks, and weights and thresholds live in a versioned profile that operations can tune.",
+      "alternative": "A single weighted score with thresholds.",
+      "tradeoff": "More rules to explain, so every verdict carries a plain-language reason."
+    },
+    {
+      "decision": "Stub by default, switch configuration to go live.",
+      "why": "Tests and demos are hermetic and reproducible, new developers get a seeded demo tenant immediately, and heavy libraries load only when needed.",
+      "alternative": "Mocking per test, or requiring the full stack for development.",
+      "tradeoff": "Stubs can hide integration bugs and their confidence values are synthetic. Speech-to-text is deliberately real-only, because a fake transcript would corrupt everything downstream."
+    },
+    {
+      "decision": "The copilot can only propose changes, never make them.",
+      "why": "Its tools are bound to the tenant, so the model can never choose which tenant's data it sees. Writes are staged as proposals that the UI commits through the normal path, so a confused or prompt-injected agent can't change configuration.",
+      "alternative": "Give the agent create and update tools directly.",
+      "tradeoff": "One more click for the user."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "Making many use cases feel like one product",
+      "body": "Voice, documents and records have nothing in common at the input. I pushed all the variability into the workflow definition and a single output contract, with exactly one place that knows about domains. Ingestion, review, analytics, export and webhooks were each written once."
+    },
+    {
+      "title": "Stopping garbage in, auto-approve out",
+      "body": "An LLM extractor will confidently read a blurry scan. I put a quality gate before OCR, made OCR confidence a multiplicative discount, made tampering and duplicates gates rather than weights, and made exact maths the authority on numbers. Uncertainty routes to a person instead of slipping through."
+    },
+    {
+      "title": "Keeping inline and distributed execution identical",
+      "body": "I wanted a laptop demo with only the API running and a production stack with separate worker pools, without two code paths drifting apart. A single execution path, a dispatch step that falls back to inline if the queue is unavailable, and tracing attached at that one path made the two modes behave and trace the same way."
+    },
+    {
+      "title": "Durable human steps inside a graph engine",
+      "body": "Human and wait blocks have to pause for minutes or days and survive restarts. I used LangGraph interrupts with a persistent checkpointer, let review items point at a pipeline run, and resume the run from its checkpoint when the reviewer decides. Wait timers are persisted, so a scheduled sweep wakes them rather than an in-memory timer."
+    }
+  ],
+  "next": [
+    "Replace the heuristic stand-ins for tampering detection, collection scoring, payment allocation and document OCR with the models the spec calls for, behind the interfaces that already exist.",
+    "Cross-job duplicate invoice detection, since double billing is the costliest fraud.",
+    "A real retraining loop: datasets built from reviewer feedback, a growing golden set and an eval gate that blocks regressions.",
+    "Confidence-driven model routing that escalates to a stronger model only below a threshold, with the escalation rate tracked as a cost metric."
+  ],
+  "lesson": "Uncertainty needs a destination. The most useful thing I built was not any single detector but the rule that whatever the system isn't sure about goes to a person, and that the person's correction becomes training data. Deterministic checks own the numbers, the LLM owns the language, and one shared result contract lets every new use case inherit review, audit and analytics without extra work."
+}

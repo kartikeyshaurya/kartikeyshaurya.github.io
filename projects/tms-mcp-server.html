@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>TMS MCP Server: A searchable map of a huge API, and a safe key | Kartikey Shaurya</title>
+  <meta name="description" content="An MCP server that turns a TMS API reference too large for any context window into small, fast lookup tools, plus a sign-in bridge that lets Claude or ChatGPT call the live API as the signed-in user, with that user&#x27;s permissions.">
+  <meta name="author" content="Kartikey Shaurya">
+  <link rel="canonical" href="https://kartikeyshaurya.github.io/projects/tms-mcp-server.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="TMS MCP Server: A searchable map of a huge API, and a safe key | Kartikey Shaurya">
+  <meta property="og:description" content="An MCP server that turns a TMS API reference too large for any context window into small, fast lookup tools, plus a sign-in bridge that lets Claude or ChatGPT call the live API as the signed-in user, with that user&#x27;s permissions.">
+  <meta property="og:url" content="https://kartikeyshaurya.github.io/projects/tms-mcp-server.html">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="wrap util">
+    <ul>
+      <li>Chandigarh, India</li>
+    </ul>
+    <ul>
+      <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
+      <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a class="pdf" href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+    </ul>
+  </div>
+
+  <div class="wrap masthead masthead--slim">
+    <a class="logo" href="../index.html">Kartikey Shaurya</a>
+    <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
+  </div>
+
+  <nav class="primary" aria-label="Sections">
+    <ul>
+      <li><a href="../index.html">Front page</a></li>
+      <li><a href="../projects/index.html" class="is-active" aria-current="page">Projects</a></li>
+      <li><a href="../index.html#experience">Experience</a></li>
+      <li><a href="../index.html#about">About</a></li>
+      <li><a class="cta" href="../index.html#hire">Hire me</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" class="case">
+  <section class="wrap case-head">
+    <p class="kicker"><a href="index.html">Projects</a> <span class="fmt">Freight &amp; Logistics AI</span></p>
+    <h1>A searchable map of a huge API, and a safe key</h1>
+    <p class="dek">An MCP server that turns a TMS API reference too large for any context window into small, fast lookup tools, plus a sign-in bridge that lets Claude or ChatGPT call the live API as the signed-in user, with that user&#x27;s permissions.</p>
+    <p class="byline">By <b>Kartikey Shaurya</b> · TMS MCP Server · Creed Infotech, internal tooling for a US freight brokerage&#x27;s TMS</p>
+  </section>
+
+  <div class="wrap case-grid">
+    <div class="case-body">
+
+      <section aria-labelledby="problem-h">
+        <h2 id="problem-h">The problem</h2>
+        <div class="prose"><p>The brokerage&#x27;s in-house TMS exposes a very large, inconsistently named API. Its generated reference document is far too big for any coding agent to read into context, so engineers and agents spent their time searching through it by hand, and were tripped up by near-duplicate routes and the API&#x27;s own query conventions.</p>
+<p>There was also demand to ask the live system questions, such as &quot;show my aging report&quot;, without building a custom UI for each one. But giving a language model a raw session, or a service account with broad rights, is unsafe. The team needed live access that could never grant more than the person already had.</p></div>
+      </section>
+
+      <section aria-labelledby="approach-h">
+        <h2 id="approach-h">How I thought about it</h2>
+        <div class="prose prose--lead"><p>I started by looking at the kind of questions people actually asked. They were about exact identifiers: which route updates a shipper&#x27;s credit limit, what does it take, which permission guards it. That ruled out the obvious answer of chunking the document and doing vector search. The reference is generated with a fixed shape, so <b>a structural parser with lexical ranking</b> gives deterministic, explainable results in milliseconds, with no embedding model and nothing to re-index.</p>
+<p>Next I thought about how agents consume answers. They work best with small, chained answers rather than large chunks, so I designed tools that lead into each other: search for a route, get its full contract, then expand the schemas it uses. Each answer is a few hundred characters and ends with a hint for the next call. A huge document becomes a short conversation.</p>
+<p>The quietest failure was the one that worried me most. If the generator changed a heading, the server would still start and look healthy while answering &quot;nothing matched&quot; to every question. The reference carries its own totals, so the tests assert that the parser reproduces them exactly. Drift becomes a failing test instead of a quietly empty server.</p>
+<p>For live access, the principle was to inherit authorisation, never reimplement it. Users sign in through a standard OAuth flow against the TMS itself, and every call runs with their own session, so the TMS enforces its own permissions. The bridge only ever adds restrictions: requests are checked against the API contract before they are sent, writes need an extra scope and can be switched off globally, credentials are redacted from responses, and every call is audited without recording request bodies. The assistant never sees the TMS credential at all.</p></div>
+      </section>
+
+      <section aria-labelledby="built-h">
+        <h2 id="built-h">What I built</h2>
+        <ul class="ticks"><li>A parser that indexes the whole API reference by structure at startup, with lookup indexes for routes, operations, controllers, schemas and permissions.</li>
+<li>Read-only MCP tools for an API overview, ranked route search, route details, controller listings, schema search with bounded expansion, and permission-to-route lookups.</li>
+<li>A ranking scheme that favours exact identifiers and drops weak matches, so results stay precise.</li>
+<li>Self-verifying tests that reconcile parsed totals against the document&#x27;s own header counts.</li>
+<li>An OAuth 2.1 authorization server that signs users in against the TMS and keeps the TMS session on the server side, where it is renewed quietly before it expires.</li>
+<li>Live tools, visible only to signed-in sessions, that validate each request against the contract, enforce a write scope and a global write switch, redact credentials and write an append-only audit record.</li>
+<li>Support for local agents over stdio and remote assistants over streaming HTTP, behind a TLS proxy, with a compatibility shim across MCP SDK versions.</li></ul>
+      </section>
+
+      <section aria-labelledby="arch-h">
+        <h2 id="arch-h">How it fits together</h2>
+        <figure class="diagram">
+          <pre class="mermaid">flowchart LR
+  CC[&quot;Coding agent&lt;br/&gt;(local)&quot;] --&gt; SRV[&quot;MCP tool server&quot;]
+  AI[&quot;Claude or ChatGPT&lt;br/&gt;(remote)&quot;] --&gt; EDGE[&quot;TLS proxy&quot;]
+  EDGE --&gt; SRV
+  EDGE --&gt; AUTH[&quot;Sign-in bridge&quot;]
+  SRV --&gt; IDX[&quot;Reference index&lt;br/&gt;and search&quot;]
+  AUTH --&gt; ST[(&quot;Session store&quot;)]
+  AUTH --&gt;|&quot;sign in&quot;| TMS[&quot;Brokerage TMS API&quot;]
+  SRV --&gt; LIVE[&quot;Live call guard&lt;br/&gt;validate, redact, audit&quot;]
+  LIVE --&gt; IDX
+  LIVE --&gt;|&quot;as the user&quot;| TMS</pre>
+          <figcaption>Reference tools work offline from the index; live calls pass through a guard that validates, redacts and audits, and run as the signed-in user.</figcaption>
+        </figure>
+        <dl class="components"><div><dt>Reference index</dt><dd>Parses the API reference into routes, schemas and permissions and answers ranked searches in milliseconds.</dd></div>
+<div><dt>MCP tool server</dt><dd>Defines the tools, keeps every answer small and bounded, and refuses to serve remotely without authentication.</dd></div>
+<div><dt>Sign-in bridge</dt><dd>A standard OAuth authorization server that signs users in against the TMS and holds their session on the server.</dd></div>
+<div><dt>Live call guard</dt><dd>Checks each request against the API contract and the write rules, calls the TMS as the user, redacts the response and audits the call.</dd></div>
+<div><dt>Session store</dt><dd>Single-node persistence for clients and sessions, with bearer credentials stored only as hashes.</dd></div></dl>
+      </section>
+
+      <section aria-labelledby="flow-h">
+        <h2 id="flow-h">What happens when an assistant makes a live call</h2>
+        <ol class="steps"><li>The assistant connects without credentials and is told where to sign in.</li>
+<li>The user is sent to a sign-in page and enters their own TMS credentials, which the bridge checks against the TMS.</li>
+<li>The bridge issues its own short-lived credentials to the assistant and keeps the TMS session on the server.</li>
+<li>The assistant asks for a route. The guard matches it against the API contract, checks the method, required parameters, write scope and write switch, and rejects mistakes locally with a useful message.</li>
+<li>The bridge renews the TMS session if it is close to expiring, then calls the TMS as the user.</li>
+<li>The response is redacted of credential-like fields and truncated, the call is written to the audit log, and the result goes back with a count of what was redacted.</li></ol>
+      </section>
+
+      <section aria-labelledby="dec-h">
+        <h2 id="dec-h">Decisions and trade-offs</h2>
+        <div class="decisions"><article class="decision">
+  <h3>A structural parser and lexical ranking instead of embeddings.</h3>
+  <dl>
+    <dt>Why</dt><dd>Questions are about exact identifiers, and the source has a fixed generated shape. Lexical search is deterministic, fast, explainable and needs no model or vector store.</dd>
+    <dt>Instead of</dt><dd>Chunking the document and doing vector search.</dd>
+    <dt>The cost</dt><dd>Synonym-style questions can miss, which I softened by indexing parameter and response text at low weight and returning hints to broaden the search.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Small, chained tools instead of one large answer.</h3>
+  <dl>
+    <dt>Why</dt><dd>Agents do better with compact answers they can follow step by step, and it keeps a huge document out of their context.</dd>
+    <dt>Instead of</dt><dd>One &quot;ask anything&quot; tool that returns large sections.</dd>
+    <dt>The cost</dt><dd>More round trips per question, steered by a next-step hint on each answer.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Tests that reconcile against the document&#x27;s own totals.</h3>
+  <dl>
+    <dt>Why</dt><dd>The most dangerous failure was a healthy-looking server returning nothing after a format change. Matching the header counts turns that into a red build.</dd>
+    <dt>Instead of</dt><dd>Spot checks on a few known routes.</dd>
+    <dt>The cost</dt><dd>The tests need updating when the API legitimately grows, which is intended.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Inherit the TMS&#x27;s authorisation instead of building our own.</h3>
+  <dl>
+    <dt>Why</dt><dd>Every call runs as the signed-in user, so the TMS enforces its own permissions and the bridge can never grant extra access.</dd>
+    <dt>Instead of</dt><dd>A service account with broad rights and a permission layer of our own.</dd>
+    <dt>The cost</dt><dd>The bridge cannot offer views beyond what a user is already allowed to see, which is the correct behaviour.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Validate requests against the spec, but pass responses through and redact them.</h3>
+  <dl>
+    <dt>Why</dt><dd>Request checks catch wrong methods and missing parameters before they reach production, but the documented response shapes did not always match reality, so validating responses would reject real data.</dd>
+    <dt>Instead of</dt><dd>Strict validation in both directions.</dd>
+    <dt>The cost</dt><dd>Response safety depends on the redaction pass, so redaction is recursive across the whole response.</dd>
+  </dl>
+</article></div>
+      </section>
+
+      <section aria-labelledby="hard-h">
+        <h2 id="hard-h">The hard parts</h2>
+        <ul class="hard"><li><h3>A document too big for any context window</h3><p>I indexed it by structure rather than reading it whole: find the section boundaries, parse each route block, and keep the raw text so output stays lossless. The result is a server that starts almost instantly and answers in a few hundred characters.</p></li>
+<li><h3>Silent failure on document drift</h3><p>I deliberately broke the document, renaming a heading and truncating the file, and both produced a server that looked fine and returned nothing. Reconciling against the document&#x27;s own totals in the tests closed that gap for CI, and a startup check that refuses an empty index is next.</p></li>
+<li><h3>An SDK that changed underneath me</h3><p>The MCP Python SDK renamed its server class and moved its run options between major versions. I made the server work with either generation and routed every user-facing error through the SDK&#x27;s own error type, so messages are not swallowed.</p></li>
+<li><h3>Sessions that outlive the upstream credential</h3><p>The TMS session expires after a fixed time and can only be renewed while it is still valid. The bridge renews it shortly before expiry, keeps working if a renewal attempt fails but the session is still valid, and ends the session cleanly if it has already lapsed, so the user is sent back to sign in.</p></li></ul>
+      </section>
+
+      <section aria-labelledby="next-h">
+        <h2 id="next-h">What I'd do next</h2>
+        <ul class="ticks ticks--plain"><li>Switch writes off by default and require confirmation for destructive calls.</li>
+<li>Add a startup check that refuses to serve an empty or partial index, and re-parse when the document changes.</li>
+<li>Move sessions and audit records to shared storage so the bridge can run on more than one node.</li>
+<li>Return structured content alongside markdown for programmatic clients.</li></ul>
+      </section>
+
+      <blockquote class="takeaway">
+        <p class="kicker">What I took away</p>
+        <p>Not every AI tool needs AI inside it. The most useful thing for these agents was a fast, exact, boring index and a sign-in bridge that adds rules without adding power. When the question is about exact identifiers, determinism beats similarity, and when an assistant touches a live system, inheriting the user&#x27;s own permissions is safer than any permission layer I could have written.</p>
+      </blockquote>
+    </div>
+
+    <aside class="case-side">
+      <dl class="facts">
+        <dt>Role</dt><dd>Sole engineer: parser, MCP server, sign-in bridge, deployment</dd>
+        <dt>Context</dt><dd>Creed Infotech, internal tooling for a US freight brokerage&#x27;s TMS</dd>
+        <dt>Status</dt><dd>Internal service</dd>
+        <dt>Stack</dt><dd>Python, MCP Python SDK, OAuth 2.1, SQLite, uv, Docker, nginx</dd>
+      </dl>
+      <nav class="toc" aria-label="On this page">
+        <p class="kicker">On this page</p>
+        <ul>
+          <li><a href="#problem-h">The problem</a></li>
+          <li><a href="#approach-h">How I thought about it</a></li>
+          <li><a href="#built-h">What I built</a></li>
+          <li><a href="#arch-h">Architecture</a></li>
+          <li><a href="#flow-h">Key flow</a></li>
+          <li><a href="#dec-h">Decisions</a></li>
+          <li><a href="#hard-h">Hard parts</a></li>
+        </ul>
+      </nav>
+    </aside>
+  </div>
+
+  <nav class="wrap pager" aria-label="More projects">
+    <a class="prev" href="business-data-collector.html"><span>Previous</span>One service that turns messy public sources into clean answers</a><a class="next" href="freightsense.html"><span>Next</span>One processing spine for every freight back-office check</a>
+  </nav>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <p class="logo">Kartikey Shaurya</p>
+      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="../index.html">Front page</a></li>
+        <li><a href="../projects/index.html">All projects</a></li>
+        <li><a href="../index.html#experience">Experience</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Elsewhere</h4>
+      <ul>
+        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+      </ul>
+    </div>
+    <p class="fine">
+      <span>© 2026 Kartikey Shaurya</span>
+      <span>Most client names and internal details are withheld. Architecture is shown at the component level.</span>
+    </p>
+  </div>
+</footer>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: "strict",
+    theme: "base",
+    flowchart: { curve: "basis", htmlLabels: true },
+    themeVariables: {
+      fontFamily: "Schibsted Grotesk, Helvetica Neue, Arial, sans-serif",
+      fontSize: "15px",
+      background: "#faedda",
+      primaryColor: "#fffdf9",
+      primaryBorderColor: "#1c1a17",
+      primaryTextColor: "#1c1a17",
+      lineColor: "#a51c30",
+      secondaryColor: "#faedda",
+      tertiaryColor: "#fffbf4",
+      clusterBkg: "#fffbf4",
+      clusterBorder: "#b9b8ad",
+      edgeLabelBackground: "#faedda"
+    }
+  });
+</script>
+</body>
+</html>

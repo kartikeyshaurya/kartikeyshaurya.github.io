@@ -1,0 +1,149 @@
+{
+  "slug": "broker-inbox-ai",
+  "theme": "freight",
+  "order": 10,
+  "title": "Broker Inbox AI",
+  "headline": "Turning a broker's inbox into drafted, reviewable TMS actions",
+  "dek": "A LangGraph pipeline that reads freight-brokerage email, links each message to the right shipment, and has small specialist agents draft the next TMS action, so a broker reviews instead of retyping.",
+  "summary": "LangGraph email pipeline that links each message to a shipment and drafts the TMS action for review.",
+  "client": "Creed Infotech, for ValueLoads",
+  "role": "Sole engineer: design docs, pipeline, agents, evals",
+  "status": "Prototype",
+  "stack": [
+    "Python",
+    "FastAPI",
+    "LangGraph",
+    "LangChain",
+    "Cloudflare Workers AI",
+    "Llama 3.3 70B",
+    "SQLite",
+    "LangSmith",
+    "React"
+  ],
+  "problem": [
+    "A freight broker's day runs on email: tenders, carrier quotes, \"book it\", check calls, breakdowns, proofs of delivery, rate confirmations. Almost every status change on a load is triggered by one of these messages, and each one has to be matched to the right load in the TMS and turned into an action by hand. The TMS has no idea which email belongs to which load.",
+    "Two things make automating this risky. Linking is the critical path: putting a document on the wrong load poisons every action that follows, so precision matters more than coverage. And the TMS's API was not designed with automation in mind, so an agent that can call it freely is a liability rather than a feature."
+  ],
+  "approach": [
+    "I started by separating what is known from what is open-ended. Ingest, understand, link and draft is a fixed workflow, so it should be a graph owned by code with LLMs inside specific nodes, not an agent choosing its own steps for every email. The rule of thumb I wrote down: a known flow is a graph, an open-ended request is an agent, and a human gate is an interrupt.",
+    "The constraint that shaped everything was precision in linking, so I kept the LLM off the resolver's main path. The resolver scores explainable signals (a reference number, the thread's history, the carrier's MC number, the lane) and applies confidence bands. High confidence links automatically, a middle band goes to a conservative LLM tie-break that is told a wrong link is far worse than human review, and anything lower goes to a person. \"No link\" and \"new business\" are legitimate outcomes, not errors.",
+    "Safety I solved structurally rather than with prompts. Email is an obvious prompt-injection channel, so <b>no agent has any tool that can write to the TMS</b>. Agents can read, and they can create drafts and tasks inside the app, nothing more. Each agent is bound to the email it is working on, links that would trigger actions when opened are redacted before any model sees the text, and every draft carries verbatim evidence quotes so the reviewer sees the source, not a paraphrase. The worst an injection can do is skew a draft that a person then checks.",
+    "Cost was the last lens. The first version made several sequential LLM calls per email. I merged classification and extraction into one strict structured call, made the supervisor a rules-first lookup table with an LLM fallback only for genuinely mixed cases, and capped every specialist loop. I kept each change only while the golden-set eval stayed green. Every approve, edit or reject is stored as a correction, which is the data that will move thresholds and justify any autonomy beyond drafts."
+  ],
+  "built": [
+    "An idempotent ingest webhook that accepts an email and processes it in the background, so the email system never waits on a model.",
+    "A normalisation step that redacts action links and separates new text from quoted history before any model reads the message.",
+    "A rules-only noise gate that drops marketing, load-board blasts and out-of-office replies without an LLM call.",
+    "One strict structured LLM call that returns intent from a closed set, document types, entities, verbatim evidence and an honest confidence, with a single escalation retry that sees the first attempt and corrects it rather than starting over.",
+    "A deterministic shipment resolver with scored signals, confidence bands and an LLM tie-break only in the middle band.",
+    "A rules-first supervisor and six small specialist ReAct agents (load builder, shipment builder, rate confirmation handler, exception handler, document filer, reply drafter), each with a hard step limit.",
+    "A review API for drafts, links and tasks, with every decision stored as a correction.",
+    "A golden-set eval that runs the real graph and fails on any regression, a calibration report that moves thresholds from correction data, and per-node latency and token metrics."
+  ],
+  "architecture": {
+    "mermaid": "flowchart LR\n  E[\"Email system\"] --> I[\"Ingest API\"]\n  I --> N[\"Normalise<br/>redact, split quotes\"]\n  N --> C[\"Noise gate<br/>rules only\"]\n  C --> U[\"Understand<br/>one structured call\"]\n  U --> R[\"Shipment resolver<br/>scored signals\"]\n  R -->|\"middle band\"| J[\"LLM tie-break\"]\n  R --> S[\"Supervisor<br/>rules first\"]\n  J --> S\n  S --> A[\"Six specialist agents<br/>read and draft only\"]\n  A --> D[(\"Drafts, links<br/>and tasks\")]\n  H[\"Broker review\"] --> D\n  D --> K[(\"Corrections<br/>learning signal\")]",
+    "caption": "A code-owned graph with LLMs inside specific nodes; no path from any agent leads to a TMS write, and every human decision feeds back as a correction.",
+    "components": [
+      {
+        "name": "Normaliser",
+        "desc": "The trust boundary: it redacts links that could trigger actions and splits off quoted history so extraction reads only the new message."
+      },
+      {
+        "name": "Understand node",
+        "desc": "One schema-locked call that classifies and extracts together, with a targeted retry on a stronger tier when confidence is low."
+      },
+      {
+        "name": "Shipment resolver",
+        "desc": "Scores candidate shipments from explainable signals and decides between auto-link, tie-break and human review."
+      },
+      {
+        "name": "Supervisor",
+        "desc": "Routes common cases with a lookup table and uses a capped LLM router only when the paperwork is genuinely mixed."
+      },
+      {
+        "name": "Specialist agents",
+        "desc": "Small single-purpose tool loops that can read shipment data and create drafts or tasks, and nothing else."
+      },
+      {
+        "name": "Review and corrections",
+        "desc": "Where brokers approve, edit or reject; every decision is stored with before and after values as training signal."
+      }
+    ]
+  },
+  "flow": {
+    "title": "What happens to one inbound email",
+    "steps": [
+      "The email system posts the message. A repeated message ID returns the existing record, so callers can retry safely.",
+      "Normalisation redacts action links and splits off quoted history.",
+      "The noise gate applies deterministic rules. Marketing and auto-replies finish here without an LLM call.",
+      "One structured call extracts intent, documents, entities and evidence. Low confidence triggers one targeted retry on the escalation tier.",
+      "The resolver scores candidate shipments. A strong match links automatically, a middling one goes to the tie-break, and a weak one goes to review.",
+      "The supervisor routes by lookup table. Nothing is drafted on a link that is still waiting for review.",
+      "A specialist reads the shipment and thread, then creates a draft action with evidence and confidence, or raises a task.",
+      "The broker approves, edits or rejects the draft, and that decision is saved as a correction."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "A deterministic graph with LLM nodes, not an LLM agent deciding the steps.",
+      "why": "The ingest workflow is known. Letting a model pick steps per email adds cost and nondeterminism and removes auditability.",
+      "alternative": "An LLM supervisor orchestrating everything.",
+      "tradeoff": "A new path means editing the graph, not just a prompt. That is fine, because it is meant to be reviewed."
+    },
+    {
+      "decision": "A rules-first supervisor with a capped LLM fallback.",
+      "why": "Most emails map to one specialist by a lookup on intent, document type and link outcome. Paying an LLM to restate that table is waste; only mixed paperwork needs judgement.",
+      "alternative": "Always route with the LLM, which is what the first version did.",
+      "tradeoff": "Two routing paths to keep in sync, since the fallback prompt mirrors the table by hand."
+    },
+    {
+      "decision": "Merge classification and extraction into one call.",
+      "why": "Both read the same text, and splitting them cost a full extra round trip per email.",
+      "alternative": "A cheap classifier call followed by a stronger extraction call.",
+      "tradeoff": "A larger schema per call, so if a model struggles with it both tasks suffer. The golden set is there to catch that."
+    },
+    {
+      "decision": "No LLM on the resolver's main path.",
+      "why": "A wrong auto-link puts a document on the wrong load and every downstream draft inherits the error. Scored signals with calibrated bands are explainable and auditable.",
+      "alternative": "Let the LLM pick the shipment from candidates every time.",
+      "tradeoff": "Lower recall on emails with no reference or lane. Those go to review, which is the correct outcome."
+    },
+    {
+      "decision": "No TMS write tool anywhere in the system.",
+      "why": "Prompt injection through email is a given. The structural defence is that no model-driven loop can reach a write. Execution will be a separate, policy-gated step that runs from code after approval.",
+      "alternative": "Give agents write tools and rely on careful prompting or after-the-fact filtering.",
+      "tradeoff": "This version automates nothing end to end: every output is a draft. That is intentional, and it keeps the correction data flowing."
+    },
+    {
+      "decision": "An open model on Cloudflare Workers AI behind an OpenAI-compatible interface.",
+      "why": "It runs on the free plan, and keeping the OpenAI wire protocol made the provider switch a configuration and client change. Model tiers are configuration, so a stronger paid model can take just the low-confidence tail later.",
+      "alternative": "Stay on a paid frontier API.",
+      "tradeoff": "Open-model quirks had to be handled in code, and the free daily quota is tight enough to limit how often the full eval can run."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "Making an open model reliable at tool calling",
+      "body": "Moving to Llama on Workers AI exposed failures that never appeared before: agent loops died on their second turn over an empty message field, nested tool arguments came back as JSON strings, and a single tool with no parameters made the model refuse to call any tool at all. I patched the client, added a pre-validator that decodes string arguments, and wrote a test that every tool takes at least one argument. Any model switch is now gated on the golden set."
+    },
+    {
+      "title": "Cutting LLM calls per email",
+      "body": "The first pipeline made several sequential calls per email. I merged classify and extract, made routing rules-first and let rule-routed emails finish deterministically after their one specialist reports. I argued each change from the call log and kept it only while the eval stayed green."
+    },
+    {
+      "title": "Precision-first linking",
+      "body": "Instead of letting the model guess a shipment, I designed scored signals with explicit bands and made no-link, new-business and review legitimate outcomes. The tie-break is told to be conservative and to cite the deciding detail, and anything it declines goes to a person."
+    },
+    {
+      "title": "Not fooling myself with the eval",
+      "body": "The golden set has one known miss: a tender on a new lane gets labelled as a quote request. Routing is identical for both labels, but I deliberately did not loosen the case to make it pass, because an eval you edit to go green stops telling you anything."
+    }
+  ],
+  "next": [
+    "Postgres with per-tenant isolation, durable ingest workers and a persistent LangGraph checkpointer.",
+    "A real TMS read client to replace the seeded shipment snapshot.",
+    "An attachment pipeline for PDFs, spreadsheets and scanned documents, since most paperwork arrives as attachments.",
+    "A policy-gated execution step for approve-to-act, with money-moving actions kept behind a human permanently."
+  ],
+  "lesson": "Autonomy should be earned with data, not granted up front. Starting at drafts only felt conservative, but it is exactly what produces the labelled corrections that show where the system can be trusted. Precision-critical steps like linking belong to explainable scoring, with the LLM saved for the cases where judgement actually helps."
+}

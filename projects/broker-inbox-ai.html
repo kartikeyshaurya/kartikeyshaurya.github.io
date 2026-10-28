@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Broker Inbox AI: Turning a broker&#x27;s inbox into drafted, reviewable TMS actions | Kartikey Shaurya</title>
+  <meta name="description" content="A LangGraph pipeline that reads freight-brokerage email, links each message to the right shipment, and has small specialist agents draft the next TMS action, so a broker reviews instead of retyping.">
+  <meta name="author" content="Kartikey Shaurya">
+  <link rel="canonical" href="https://kartikeyshaurya.github.io/projects/broker-inbox-ai.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Broker Inbox AI: Turning a broker&#x27;s inbox into drafted, reviewable TMS actions | Kartikey Shaurya">
+  <meta property="og:description" content="A LangGraph pipeline that reads freight-brokerage email, links each message to the right shipment, and has small specialist agents draft the next TMS action, so a broker reviews instead of retyping.">
+  <meta property="og:url" content="https://kartikeyshaurya.github.io/projects/broker-inbox-ai.html">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="wrap util">
+    <ul>
+      <li>Chandigarh, India</li>
+    </ul>
+    <ul>
+      <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
+      <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a class="pdf" href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+    </ul>
+  </div>
+
+  <div class="wrap masthead masthead--slim">
+    <a class="logo" href="../index.html">Kartikey Shaurya</a>
+    <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
+  </div>
+
+  <nav class="primary" aria-label="Sections">
+    <ul>
+      <li><a href="../index.html">Front page</a></li>
+      <li><a href="../projects/index.html" class="is-active" aria-current="page">Projects</a></li>
+      <li><a href="../index.html#experience">Experience</a></li>
+      <li><a href="../index.html#about">About</a></li>
+      <li><a class="cta" href="../index.html#hire">Hire me</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" class="case">
+  <section class="wrap case-head">
+    <p class="kicker"><a href="index.html">Projects</a> <span class="fmt">Freight &amp; Logistics AI</span></p>
+    <h1>Turning a broker&#x27;s inbox into drafted, reviewable TMS actions</h1>
+    <p class="dek">A LangGraph pipeline that reads freight-brokerage email, links each message to the right shipment, and has small specialist agents draft the next TMS action, so a broker reviews instead of retyping.</p>
+    <p class="byline">By <b>Kartikey Shaurya</b> · Broker Inbox AI · Creed Infotech, for ValueLoads</p>
+  </section>
+
+  <div class="wrap case-grid">
+    <div class="case-body">
+
+      <section aria-labelledby="problem-h">
+        <h2 id="problem-h">The problem</h2>
+        <div class="prose"><p>A freight broker&#x27;s day runs on email: tenders, carrier quotes, &quot;book it&quot;, check calls, breakdowns, proofs of delivery, rate confirmations. Almost every status change on a load is triggered by one of these messages, and each one has to be matched to the right load in the TMS and turned into an action by hand. The TMS has no idea which email belongs to which load.</p>
+<p>Two things make automating this risky. Linking is the critical path: putting a document on the wrong load poisons every action that follows, so precision matters more than coverage. And the TMS&#x27;s API was not designed with automation in mind, so an agent that can call it freely is a liability rather than a feature.</p></div>
+      </section>
+
+      <section aria-labelledby="approach-h">
+        <h2 id="approach-h">How I thought about it</h2>
+        <div class="prose prose--lead"><p>I started by separating what is known from what is open-ended. Ingest, understand, link and draft is a fixed workflow, so it should be a graph owned by code with LLMs inside specific nodes, not an agent choosing its own steps for every email. The rule of thumb I wrote down: a known flow is a graph, an open-ended request is an agent, and a human gate is an interrupt.</p>
+<p>The constraint that shaped everything was precision in linking, so I kept the LLM off the resolver&#x27;s main path. The resolver scores explainable signals (a reference number, the thread&#x27;s history, the carrier&#x27;s MC number, the lane) and applies confidence bands. High confidence links automatically, a middle band goes to a conservative LLM tie-break that is told a wrong link is far worse than human review, and anything lower goes to a person. &quot;No link&quot; and &quot;new business&quot; are legitimate outcomes, not errors.</p>
+<p>Safety I solved structurally rather than with prompts. Email is an obvious prompt-injection channel, so <b>no agent has any tool that can write to the TMS</b>. Agents can read, and they can create drafts and tasks inside the app, nothing more. Each agent is bound to the email it is working on, links that would trigger actions when opened are redacted before any model sees the text, and every draft carries verbatim evidence quotes so the reviewer sees the source, not a paraphrase. The worst an injection can do is skew a draft that a person then checks.</p>
+<p>Cost was the last lens. The first version made several sequential LLM calls per email. I merged classification and extraction into one strict structured call, made the supervisor a rules-first lookup table with an LLM fallback only for genuinely mixed cases, and capped every specialist loop. I kept each change only while the golden-set eval stayed green. Every approve, edit or reject is stored as a correction, which is the data that will move thresholds and justify any autonomy beyond drafts.</p></div>
+      </section>
+
+      <section aria-labelledby="built-h">
+        <h2 id="built-h">What I built</h2>
+        <ul class="ticks"><li>An idempotent ingest webhook that accepts an email and processes it in the background, so the email system never waits on a model.</li>
+<li>A normalisation step that redacts action links and separates new text from quoted history before any model reads the message.</li>
+<li>A rules-only noise gate that drops marketing, load-board blasts and out-of-office replies without an LLM call.</li>
+<li>One strict structured LLM call that returns intent from a closed set, document types, entities, verbatim evidence and an honest confidence, with a single escalation retry that sees the first attempt and corrects it rather than starting over.</li>
+<li>A deterministic shipment resolver with scored signals, confidence bands and an LLM tie-break only in the middle band.</li>
+<li>A rules-first supervisor and six small specialist ReAct agents (load builder, shipment builder, rate confirmation handler, exception handler, document filer, reply drafter), each with a hard step limit.</li>
+<li>A review API for drafts, links and tasks, with every decision stored as a correction.</li>
+<li>A golden-set eval that runs the real graph and fails on any regression, a calibration report that moves thresholds from correction data, and per-node latency and token metrics.</li></ul>
+      </section>
+
+      <section aria-labelledby="arch-h">
+        <h2 id="arch-h">How it fits together</h2>
+        <figure class="diagram">
+          <pre class="mermaid">flowchart LR
+  E[&quot;Email system&quot;] --&gt; I[&quot;Ingest API&quot;]
+  I --&gt; N[&quot;Normalise&lt;br/&gt;redact, split quotes&quot;]
+  N --&gt; C[&quot;Noise gate&lt;br/&gt;rules only&quot;]
+  C --&gt; U[&quot;Understand&lt;br/&gt;one structured call&quot;]
+  U --&gt; R[&quot;Shipment resolver&lt;br/&gt;scored signals&quot;]
+  R --&gt;|&quot;middle band&quot;| J[&quot;LLM tie-break&quot;]
+  R --&gt; S[&quot;Supervisor&lt;br/&gt;rules first&quot;]
+  J --&gt; S
+  S --&gt; A[&quot;Six specialist agents&lt;br/&gt;read and draft only&quot;]
+  A --&gt; D[(&quot;Drafts, links&lt;br/&gt;and tasks&quot;)]
+  H[&quot;Broker review&quot;] --&gt; D
+  D --&gt; K[(&quot;Corrections&lt;br/&gt;learning signal&quot;)]</pre>
+          <figcaption>A code-owned graph with LLMs inside specific nodes; no path from any agent leads to a TMS write, and every human decision feeds back as a correction.</figcaption>
+        </figure>
+        <dl class="components"><div><dt>Normaliser</dt><dd>The trust boundary: it redacts links that could trigger actions and splits off quoted history so extraction reads only the new message.</dd></div>
+<div><dt>Understand node</dt><dd>One schema-locked call that classifies and extracts together, with a targeted retry on a stronger tier when confidence is low.</dd></div>
+<div><dt>Shipment resolver</dt><dd>Scores candidate shipments from explainable signals and decides between auto-link, tie-break and human review.</dd></div>
+<div><dt>Supervisor</dt><dd>Routes common cases with a lookup table and uses a capped LLM router only when the paperwork is genuinely mixed.</dd></div>
+<div><dt>Specialist agents</dt><dd>Small single-purpose tool loops that can read shipment data and create drafts or tasks, and nothing else.</dd></div>
+<div><dt>Review and corrections</dt><dd>Where brokers approve, edit or reject; every decision is stored with before and after values as training signal.</dd></div></dl>
+      </section>
+
+      <section aria-labelledby="flow-h">
+        <h2 id="flow-h">What happens to one inbound email</h2>
+        <ol class="steps"><li>The email system posts the message. A repeated message ID returns the existing record, so callers can retry safely.</li>
+<li>Normalisation redacts action links and splits off quoted history.</li>
+<li>The noise gate applies deterministic rules. Marketing and auto-replies finish here without an LLM call.</li>
+<li>One structured call extracts intent, documents, entities and evidence. Low confidence triggers one targeted retry on the escalation tier.</li>
+<li>The resolver scores candidate shipments. A strong match links automatically, a middling one goes to the tie-break, and a weak one goes to review.</li>
+<li>The supervisor routes by lookup table. Nothing is drafted on a link that is still waiting for review.</li>
+<li>A specialist reads the shipment and thread, then creates a draft action with evidence and confidence, or raises a task.</li>
+<li>The broker approves, edits or rejects the draft, and that decision is saved as a correction.</li></ol>
+      </section>
+
+      <section aria-labelledby="dec-h">
+        <h2 id="dec-h">Decisions and trade-offs</h2>
+        <div class="decisions"><article class="decision">
+  <h3>A deterministic graph with LLM nodes, not an LLM agent deciding the steps.</h3>
+  <dl>
+    <dt>Why</dt><dd>The ingest workflow is known. Letting a model pick steps per email adds cost and nondeterminism and removes auditability.</dd>
+    <dt>Instead of</dt><dd>An LLM supervisor orchestrating everything.</dd>
+    <dt>The cost</dt><dd>A new path means editing the graph, not just a prompt. That is fine, because it is meant to be reviewed.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>A rules-first supervisor with a capped LLM fallback.</h3>
+  <dl>
+    <dt>Why</dt><dd>Most emails map to one specialist by a lookup on intent, document type and link outcome. Paying an LLM to restate that table is waste; only mixed paperwork needs judgement.</dd>
+    <dt>Instead of</dt><dd>Always route with the LLM, which is what the first version did.</dd>
+    <dt>The cost</dt><dd>Two routing paths to keep in sync, since the fallback prompt mirrors the table by hand.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Merge classification and extraction into one call.</h3>
+  <dl>
+    <dt>Why</dt><dd>Both read the same text, and splitting them cost a full extra round trip per email.</dd>
+    <dt>Instead of</dt><dd>A cheap classifier call followed by a stronger extraction call.</dd>
+    <dt>The cost</dt><dd>A larger schema per call, so if a model struggles with it both tasks suffer. The golden set is there to catch that.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>No LLM on the resolver&#x27;s main path.</h3>
+  <dl>
+    <dt>Why</dt><dd>A wrong auto-link puts a document on the wrong load and every downstream draft inherits the error. Scored signals with calibrated bands are explainable and auditable.</dd>
+    <dt>Instead of</dt><dd>Let the LLM pick the shipment from candidates every time.</dd>
+    <dt>The cost</dt><dd>Lower recall on emails with no reference or lane. Those go to review, which is the correct outcome.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>No TMS write tool anywhere in the system.</h3>
+  <dl>
+    <dt>Why</dt><dd>Prompt injection through email is a given. The structural defence is that no model-driven loop can reach a write. Execution will be a separate, policy-gated step that runs from code after approval.</dd>
+    <dt>Instead of</dt><dd>Give agents write tools and rely on careful prompting or after-the-fact filtering.</dd>
+    <dt>The cost</dt><dd>This version automates nothing end to end: every output is a draft. That is intentional, and it keeps the correction data flowing.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>An open model on Cloudflare Workers AI behind an OpenAI-compatible interface.</h3>
+  <dl>
+    <dt>Why</dt><dd>It runs on the free plan, and keeping the OpenAI wire protocol made the provider switch a configuration and client change. Model tiers are configuration, so a stronger paid model can take just the low-confidence tail later.</dd>
+    <dt>Instead of</dt><dd>Stay on a paid frontier API.</dd>
+    <dt>The cost</dt><dd>Open-model quirks had to be handled in code, and the free daily quota is tight enough to limit how often the full eval can run.</dd>
+  </dl>
+</article></div>
+      </section>
+
+      <section aria-labelledby="hard-h">
+        <h2 id="hard-h">The hard parts</h2>
+        <ul class="hard"><li><h3>Making an open model reliable at tool calling</h3><p>Moving to Llama on Workers AI exposed failures that never appeared before: agent loops died on their second turn over an empty message field, nested tool arguments came back as JSON strings, and a single tool with no parameters made the model refuse to call any tool at all. I patched the client, added a pre-validator that decodes string arguments, and wrote a test that every tool takes at least one argument. Any model switch is now gated on the golden set.</p></li>
+<li><h3>Cutting LLM calls per email</h3><p>The first pipeline made several sequential calls per email. I merged classify and extract, made routing rules-first and let rule-routed emails finish deterministically after their one specialist reports. I argued each change from the call log and kept it only while the eval stayed green.</p></li>
+<li><h3>Precision-first linking</h3><p>Instead of letting the model guess a shipment, I designed scored signals with explicit bands and made no-link, new-business and review legitimate outcomes. The tie-break is told to be conservative and to cite the deciding detail, and anything it declines goes to a person.</p></li>
+<li><h3>Not fooling myself with the eval</h3><p>The golden set has one known miss: a tender on a new lane gets labelled as a quote request. Routing is identical for both labels, but I deliberately did not loosen the case to make it pass, because an eval you edit to go green stops telling you anything.</p></li></ul>
+      </section>
+
+      <section aria-labelledby="next-h">
+        <h2 id="next-h">What I'd do next</h2>
+        <ul class="ticks ticks--plain"><li>Postgres with per-tenant isolation, durable ingest workers and a persistent LangGraph checkpointer.</li>
+<li>A real TMS read client to replace the seeded shipment snapshot.</li>
+<li>An attachment pipeline for PDFs, spreadsheets and scanned documents, since most paperwork arrives as attachments.</li>
+<li>A policy-gated execution step for approve-to-act, with money-moving actions kept behind a human permanently.</li></ul>
+      </section>
+
+      <blockquote class="takeaway">
+        <p class="kicker">What I took away</p>
+        <p>Autonomy should be earned with data, not granted up front. Starting at drafts only felt conservative, but it is exactly what produces the labelled corrections that show where the system can be trusted. Precision-critical steps like linking belong to explainable scoring, with the LLM saved for the cases where judgement actually helps.</p>
+      </blockquote>
+    </div>
+
+    <aside class="case-side">
+      <dl class="facts">
+        <dt>Role</dt><dd>Sole engineer: design docs, pipeline, agents, evals</dd>
+        <dt>Context</dt><dd>Creed Infotech, for ValueLoads</dd>
+        <dt>Status</dt><dd>Prototype</dd>
+        <dt>Stack</dt><dd>Python, FastAPI, LangGraph, LangChain, Cloudflare Workers AI, Llama 3.3 70B, SQLite, LangSmith, React</dd>
+      </dl>
+      <nav class="toc" aria-label="On this page">
+        <p class="kicker">On this page</p>
+        <ul>
+          <li><a href="#problem-h">The problem</a></li>
+          <li><a href="#approach-h">How I thought about it</a></li>
+          <li><a href="#built-h">What I built</a></li>
+          <li><a href="#arch-h">Architecture</a></li>
+          <li><a href="#flow-h">Key flow</a></li>
+          <li><a href="#dec-h">Decisions</a></li>
+          <li><a href="#hard-h">Hard parts</a></li>
+        </ul>
+      </nav>
+    </aside>
+  </div>
+
+  <nav class="wrap pager" aria-label="More projects">
+    <a class="prev" href="load-search.html"><span>Previous</span>A load board that tells the agent what to ask next</a><a class="next" href="relay-fleet.html"><span>Next</span>A commute platform that can explain every ride it books</a>
+  </nav>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <p class="logo">Kartikey Shaurya</p>
+      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="../index.html">Front page</a></li>
+        <li><a href="../projects/index.html">All projects</a></li>
+        <li><a href="../index.html#experience">Experience</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Elsewhere</h4>
+      <ul>
+        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+      </ul>
+    </div>
+    <p class="fine">
+      <span>© 2026 Kartikey Shaurya</span>
+      <span>Most client names and internal details are withheld. Architecture is shown at the component level.</span>
+    </p>
+  </div>
+</footer>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: "strict",
+    theme: "base",
+    flowchart: { curve: "basis", htmlLabels: true },
+    themeVariables: {
+      fontFamily: "Schibsted Grotesk, Helvetica Neue, Arial, sans-serif",
+      fontSize: "15px",
+      background: "#faedda",
+      primaryColor: "#fffdf9",
+      primaryBorderColor: "#1c1a17",
+      primaryTextColor: "#1c1a17",
+      lineColor: "#a51c30",
+      secondaryColor: "#faedda",
+      tertiaryColor: "#fffbf4",
+      clusterBkg: "#fffbf4",
+      clusterBorder: "#b9b8ad",
+      edgeLabelBackground: "#faedda"
+    }
+  });
+</script>
+</body>
+</html>

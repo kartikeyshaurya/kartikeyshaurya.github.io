@@ -1,0 +1,143 @@
+{
+  "slug": "face-verification",
+  "theme": "ml",
+  "order": 2,
+  "title": "Face Verification",
+  "headline": "Checking the selfie against the licence, and explaining the retake",
+  "dek": "A CPU-only service that decides whether the person in a live selfie is the person on a driving licence. Open face models settle the clear cases locally, and only uncertain pairs reach a vision LLM, which explains in plain language which photo to retake.",
+  "summary": "Selfie-to-licence face matching on CPU, with passive liveness and a guarded LLM second opinion.",
+  "client": "Creed Infotech, for an identity-onboarding flow",
+  "role": "Sole engineer: model pipeline, API, evaluation tooling, packaging",
+  "status": "MVP, awaiting calibration on real traffic",
+  "stack": [
+    "Python",
+    "FastAPI",
+    "InsightFace (SCRFD and ArcFace)",
+    "ONNX Runtime",
+    "MiniFASNet anti-spoofing",
+    "PyTorch (CPU)",
+    "OpenCV",
+    "OpenAI vision model with structured outputs",
+    "Docker"
+  ],
+  "problem": [
+    "Onboarding flows that need an identity check have to confirm that the person holding the phone is the person on the licence. Licence portraits are tiny, printed, laminated, often glary and sometimes years old. Selfies from the phone app arrived rotated sideways with no orientation metadata. Off-the-shelf face matching on those raw inputs produces borderline scores.",
+    "A bare \"no match\" is also a dead end for the user, who can't tell whether to retake the selfie or photograph the licence again. The backend services calling the check need a clear verdict, end users need a message they can act on, and human reviewers need the reasoning behind the uncertain cases."
+  ],
+  "approach": [
+    "I started by deciding not to train anything. Face detection, recognition and anti-spoofing are well covered by mature open models, and there was no labelled licence-and-selfie dataset to train on. That moved the problem away from modelling and towards inputs and calibration: make what the models see as clean as possible, and be honest about what the scores mean.",
+    "When early genuine pairs scored lower than they should have, I inspected the inputs instead of moving the thresholds. Two root causes stood out: sideways selfies and tiny, glary portraits. I added an orientation search, a second detection pass on an upscaled crop taken from the original-resolution licence image, and mirror averaging of the embeddings. I also tested contrast enhancement, the usual instinct for washed-out photos, found that it made matching worse, and left it out with the reason written down so nobody adds it back later.",
+    "The bigger design question was what to do with uncertain pairs. A single hard threshold forces errors on borderline cases, so I used three bands: match, review and no match. On top of that, bad input gets a <b>rejected</b> outcome with a specific reason, such as a blurry image, a face that is too small or more than one face in the selfie. That turns bad input into a re-capture request instead of a wrong verdict.",
+    "I settled on a cascade where <b>the biometric model decides and the LLM advises</b>. A confident local match never leaves the machine. Only doubtful pairs go to a vision model, which explains why the pair is uncertain and writes the guidance the user sees. Its authority is limited in code: it cannot turn a biometric \"no\" into a \"yes\", and if the call fails for any reason the local verdict is returned. The core check never depends on an external API."
+  ],
+  "built": [
+    "A stateless verification API that returns a verdict, which stage decided it, which photo caused any problem, a user message, a suggested fix and per-stage timings.",
+    "A local pipeline: orientation correction, SCRFD face detection, a two-pass crop for small licence portraits, ArcFace embeddings with mirror averaging, and similarity scoring into three bands.",
+    "Quality gates that reject unusable input with a specific reason for each image instead of guessing.",
+    "A passive anti-spoofing stage built on MiniFASNet, ported with its exact original preprocessing and isolated so it can be replaced by an active liveness check.",
+    "A guarded LLM second opinion with a strict response schema, a prompt that compares only stable facial features, and a fail-safe fallback to the local verdict.",
+    "Rule-based user messages for local verdicts, so the service gives useful guidance even with no LLM configured.",
+    "An evaluation harness that builds genuine and impostor pairs, sweeps thresholds and reports false-accept and false-reject rates for calibration.",
+    "An offline-capable Docker image that bakes in the model weights and checks that they load at build time."
+  ],
+  "architecture": {
+    "mermaid": "flowchart LR\n  A[\"Onboarding backend\"] --> B[\"Verification API\"]\n  B --> C[\"Decode and<br/>orientation correction\"]\n  C --> D[\"Face detection<br/>SCRFD\"]\n  D --> E[\"Licence crop<br/>refinement\"]\n  E --> F[\"Embeddings<br/>ArcFace\"]\n  D --> F\n  D --> G[\"Passive liveness<br/>MiniFASNet\"]\n  F --> H[\"Quality gates and<br/>similarity bands\"]\n  G --> H\n  H -->|\"clear result\"| I[\"Rule-based message\"]\n  H -->|\"uncertain pair\"| J[\"Vision LLM<br/>second opinion\"]\n  J --> K[\"Guard: cannot overturn<br/>a biometric no\"]\n  I --> L[\"Response\"]\n  K --> L",
+    "caption": "Everything up to the similarity bands runs locally on CPU; only uncertain pairs cross to the vision model, and a guard sits between its answer and the response.",
+    "components": [
+      {
+        "name": "Local face pipeline",
+        "desc": "Corrects orientation, detects the largest face on each image, refines the small licence portrait and produces ArcFace embeddings."
+      },
+      {
+        "name": "Quality gates",
+        "desc": "Turn blurry, dark, tiny or multi-face input into a rejected verdict with a specific reason and a retake message."
+      },
+      {
+        "name": "Liveness stage",
+        "desc": "A passive MiniFASNet ensemble that checks the selfie is a live capture, kept separate so it can be swapped for an active check."
+      },
+      {
+        "name": "Cascade router",
+        "desc": "Returns clear results straight away and sends only uncertain pairs, with the matcher's context, to the second opinion."
+      },
+      {
+        "name": "LLM second opinion",
+        "desc": "A vision model with a strict schema that explains what makes a pair uncertain and which photo the user should retake."
+      },
+      {
+        "name": "Guard",
+        "desc": "Limits what the LLM can change, so its answer can never overturn a biometric rejection, and falls back to the local verdict on any error."
+      }
+    ]
+  },
+  "flow": {
+    "title": "What happens to a licence photo and a selfie",
+    "steps": [
+      "The onboarding backend sends both images. The service decodes them at full resolution and applies any orientation metadata.",
+      "If the face in an image is not upright, the service tries the other rotations and keeps the best one.",
+      "The largest face on each image is selected. That skips the small duplicate portrait many licences carry, and picks the person nearest the camera in a selfie.",
+      "The licence portrait is detected again on an upscaled crop of the original image for sharper alignment, then both faces are embedded.",
+      "The quality gates and the liveness check run. Any failure returns a rejected verdict with a specific reason and a retake message.",
+      "The two embeddings are compared and the score falls into match, review or no match. A clear match returns immediately.",
+      "An uncertain pair goes to the vision model with the matcher's context. Its answer passes through the guard before it becomes the final verdict, and any error falls back to the local result.",
+      "Nothing is stored. The response carries the verdict, the reason, the user message and the timings."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "Use pretrained models only",
+      "why": "SCRFD, ArcFace and MiniFASNet already cover the problem well, there was no labelled dataset to train on, and the quality gap was better handled with preprocessing and calibration.",
+      "alternative": "Fine-tuning a recognition model on licence and selfie pairs.",
+      "tradeoff": "The service is limited by how well the chosen model handles cross-quality pairs. A larger open model is the next lever, but only if the evaluation shows a shortfall."
+    },
+    {
+      "decision": "Search for the upright orientation instead of trusting metadata",
+      "why": "Selfies came in sideways with no orientation tag. Detection still worked, but recognition and liveness both degraded, and fixing rotation was the biggest single improvement I measured.",
+      "alternative": "Relying on image metadata alone.",
+      "tradeoff": "A rotated image can take several detector passes. An image that is already upright takes one."
+    },
+    {
+      "decision": "Leave out contrast enhancement",
+      "why": "I tested it on the licence crops and it made genuine pairs score lower and impostors score higher. Keeping the input close to raw pixels was better, and the reason is documented in the code.",
+      "alternative": "The usual image-enhancement step for washed-out photos.",
+      "tradeoff": "It looks counter-intuitive to anyone reading the code, which is exactly why the evidence is written down next to it."
+    },
+    {
+      "decision": "Three bands plus a rejected outcome with a reason",
+      "why": "A binary threshold forces errors on borderline pairs. The review band sends them to a person or the LLM, and the rejected outcome turns bad input into a clear request to recapture.",
+      "alternative": "A simple match or no-match answer.",
+      "tradeoff": "Clients have more outcomes to handle, so I wrote a handling checklist for integrators."
+    },
+    {
+      "decision": "The LLM is a bounded second opinion, not the decider",
+      "why": "Vision LLMs are good at explaining why a pair is uncertain and at writing user guidance, but they are not biometric matchers. Clean matches never leave the machine, which helps both privacy and cost.",
+      "alternative": "LLM-only verification, or no LLM at all.",
+      "tradeoff": "Escalated requests take noticeably longer and send those images to a third party, which needs a data-processing agreement. Leaving the LLM unconfigured runs the service fully offline."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "Borderline scores on real licences",
+      "body": "On the first sample run, a genuine pair landed in the review band and some live selfies scored poorly on liveness. Instead of moving thresholds, I traced it to rotated selfies and tiny, glary portraits, and fixed those inputs. The sample was small, so I treat the result as a direction, not as a validated accuracy figure."
+    },
+    {
+      "title": "Knowing what not to add",
+      "body": "Contrast enhancement looked like an obvious improvement for washed-out licence photos. Measuring it showed a regression, so it stayed out, and the evidence lives in the code where the next person will see it."
+    },
+    {
+      "title": "Making an LLM safe inside a biometric decision",
+      "body": "I designed around three properties: limited authority enforced in code, strict schema output instead of free text, and a fallback to the local verdict on any error. The prompt also tells the model to compare only stable facial features, ignore things like ageing, beards and glasses, and never put personal details into the user message."
+    },
+    {
+      "title": "Porting the anti-spoofing model faithfully",
+      "body": "The upstream liveness model only works with its exact original preprocessing, and the usual normalisation \"best practice\" silently breaks it. I reproduced the upstream steps exactly, read each model's settings from its weight files, and marked the code so nobody tidies it into a broken state."
+    }
+  ],
+  "next": [
+    "Collect a large set of real genuine and impostor pairs and calibrate the decision threshold for a chosen false-accept rate.",
+    "Separate the fast local stage from the slow escalation so the two scale independently, with a cap on concurrent LLM calls.",
+    "Offer an active liveness option for flows that need higher assurance.",
+    "Measure how often the LLM agrees with human reviewers on review cases before trusting it with more."
+  ],
+  "lesson": "Measure the inputs before you tune the thresholds. The biggest gain in this project came from noticing that selfies were arriving sideways, not from a better model, and one of the most useful results was learning that a standard enhancement step made things worse. When an LLM goes into a decision that matters, I'd keep the same shape: the deterministic model decides, the LLM explains, and its authority is limited in code rather than in the prompt."
+}

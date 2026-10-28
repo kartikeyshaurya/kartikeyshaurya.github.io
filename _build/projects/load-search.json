@@ -1,0 +1,146 @@
+{
+  "slug": "load-search",
+  "theme": "freight",
+  "order": 9,
+  "title": "Load Search Service",
+  "headline": "A load board that tells the agent what to ask next",
+  "dek": "An in-memory freight load search service built for a voice agent. It answers which loads match, and also which question will narrow the results fastest.",
+  "summary": "In-memory Polars load board that returns matches plus the next question for a voice agent to ask.",
+  "client": "Creed Infotech, for ValueLoads",
+  "role": "Sole engineer: design, implementation, deployment",
+  "status": "MVP",
+  "stack": [
+    "Python",
+    "FastAPI",
+    "Polars",
+    "Pydantic",
+    "Prometheus",
+    "Docker",
+    "pytest"
+  ],
+  "problem": [
+    "Carriers call a freight broker with questions like \"got a reefer out of Illinois?\". A voice agent answering that call has to search the live load board in well under a second, because every tool call is dead air on the phone. Callers also give details a piece at a time (\"out of Chicago... reefer... next Tuesday\"), so the search has to work on any subset of fields.",
+    "Two more things make it harder. Reading forty loads aloud is useless, so the agent needs a principled way to narrow the list. And quoting a load that was covered ten minutes ago costs the broker credibility, so freshness has to be visible on every answer. Brokers and operations staff have a related question too: which brokers have loads on this lane, and how do I reach them?"
+  ],
+  "approach": [
+    "I started from the shape of the upstream data rather than from a database. The broker's API returns the whole active board in one response, and it is small enough to hold in memory comfortably. A database on the query path would add a sync job, a network hop on every voice turn and index tuning, without adding any capability. So the service keeps the entire board in process as a Polars DataFrame and rebuilds it from upstream every 60 seconds. The upstream stays the source of truth.",
+    "The next question was how to refresh without ever serving a half-updated board. Instead of locks, each refresh builds a brand-new immutable frame off the event loop and then swaps a single reference. A request grabs the current snapshot once and works on it to the end. The cost is briefly holding two copies in memory, which I budgeted for. The same reasoning pinned the service to one worker process: several workers would each hold their own copy on their own schedule, and two requests could see two different boards.",
+    "The most interesting decision was who chooses the next question. Handing the LLM all the matches and letting it narrow produced long, inconsistent dialogs. Narrowing is really a data question (which field still splits the result set?), and code answers that deterministically. So every search returns a suggested field from a fixed, broker-style priority: reference number, then origin, destination, equipment, pickup date and rate. A field is only suggested if the caller hasn't given it, hasn't declined it, and it still has more than one distinct value among the matches. <b>The search decides what to ask; the LLM only decides how to phrase it.</b>",
+    "I treated freshness as a product output, not just an ops concern. Every response carries the snapshot's age, a health check fails once the board goes stale, and a metric drives alerting. The rule I settled on was to fail closed on bad data and fail open on refresh errors: a malformed or empty payload never replaces a good board, and a failed refresh keeps serving the last good one while its growing age becomes the signal."
+  ],
+  "built": [
+    "A search endpoint that takes any subset of load fields (reference number, origin and destination, equipment, truckload or partial, commodity, pickup dates, rate and weight bounds) and combines them.",
+    "Conversation-aware narrowing that returns a suggested next field, plus a way for the agent to say \"the caller has no reference number\" so it stops asking.",
+    "Forgiving matching for how people actually talk: equipment matched by name or class, case-insensitive cities and states, and partial broker names.",
+    "A broker directory that groups the same snapshot by broker and returns contact details and load counts, busiest first, plus the mirror query for one broker's loads.",
+    "An ingest layer that flattens nested upstream records into a fixed schema, coerces messy prices and timestamps, and refuses to publish a malformed board.",
+    "Health checks and Prometheus metrics for readiness, snapshot age, refresh success and failure, refresh duration and memory use.",
+    "A thin client for the voice agent that turns the suggested field into a ready-made question, with a command-line mode for testing.",
+    "A hardened container that runs as a non-root user and is internal-only by default, with a test suite that needs no network."
+  ],
+  "architecture": {
+    "mermaid": "flowchart LR\n  U[\"Broker load API<br/>(full active board)\"] --> I[\"Ingest and<br/>normalise\"]\n  L[\"Refresh loop<br/>every 60s\"] --> I\n  I -->|\"atomic swap\"| S[(\"Immutable snapshot<br/>Polars DataFrame\")]\n  A[\"Voice agent<br/>(planned caller)\"] -.-> C[\"Agent client\"]\n  C --> R[\"Search API<br/>FastAPI\"]\n  R --> K[\"Pure search and<br/>narrowing core\"]\n  K --> S\n  H[\"Health and<br/>metrics\"] --> S\n  P[\"Prometheus<br/>alerting\"] --> H",
+    "caption": "The whole board lives in memory as one immutable snapshot; the dotted edge to the voice agent is the planned integration, not yet connected.",
+    "components": [
+      {
+        "name": "Ingest",
+        "desc": "Pulls the full board, flattens nested records into a fixed schema, and stops before publishing if the payload is empty or malformed."
+      },
+      {
+        "name": "Snapshot store",
+        "desc": "Holds one frozen frame with its timestamp; publishing a new board is a single reference swap, so no locks are needed."
+      },
+      {
+        "name": "Search core",
+        "desc": "Pure functions from a frame and a query to results and a suggestion, with no web framework code, so they are easy to test and could later run inside the agent."
+      },
+      {
+        "name": "Search API",
+        "desc": "Typed request and response models at the edge for load search, the broker directory and per-broker loads."
+      },
+      {
+        "name": "Health and metrics",
+        "desc": "Turns staleness into a failing health check and an alertable metric, so a service that looks alive but serves old data is caught."
+      },
+      {
+        "name": "Agent client",
+        "desc": "A small wrapper for the voice agent that drops empty parameters and maps the suggested field to a natural question."
+      }
+    ]
+  },
+  "flow": {
+    "title": "How a carrier's request gets narrowed",
+    "steps": [
+      "The carrier asks \"anything out of Illinois?\" and the agent extracts the origin state.",
+      "The agent searches with just that field. The service pins the current snapshot for the whole request, even if a refresh lands mid-query.",
+      "The core filters the board and counts every match. There are more than five, so it walks the priority list.",
+      "Reference number comes first, so the response suggests it, along with the top five matches and the snapshot's age.",
+      "The agent asks for a reference number. The caller has none, so the next search excludes that field from suggestions.",
+      "Origin is already known, so the core suggests destination, but only because the matches still span more than one destination.",
+      "The loop continues until five or fewer loads match, which the agent reads back. If nothing matches, the agent relaxes a constraint."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "Hold the whole board in process memory, with no database on the query path.",
+      "why": "The upstream returns the full active board in one call and it fits comfortably in memory. Memory is the fastest index available and adds no network hop to a voice turn.",
+      "alternative": "Postgres or Elasticsearch, synced from upstream.",
+      "tradeoff": "Every restart re-fetches the board, and capacity is bounded by RAM, so I set a memory limit and watch resident memory."
+    },
+    {
+      "decision": "Immutable frames and a reference swap instead of locks.",
+      "why": "A request works on one frozen frame, so a concurrent refresh can never produce half-old, half-new results, and there is zero lock contention.",
+      "alternative": "A mutable index guarded by a lock.",
+      "tradeoff": "Memory briefly holds the old and new frames during a swap, so the container needs headroom."
+    },
+    {
+      "decision": "A single worker process.",
+      "why": "Each worker would hold its own board on its own refresh schedule, so requests could disagree. Polars already parallelises inside a query.",
+      "alternative": "Several workers behind a process manager, or a shared memory store.",
+      "tradeoff": "Throughput is capped at one process. Scaling out means identical replicas behind a load balancer, each carrying its snapshot timestamp so drift is visible."
+    },
+    {
+      "decision": "A deterministic next-question suggestion in code; the LLM only phrases it.",
+      "why": "LLMs are inconsistent at deciding which constraint splits a result set best. A fixed priority is predictable, testable and mirrors how human brokers qualify a call, and the distinct-value check stops pointless questions.",
+      "alternative": "Let the LLM pick the next question, or choose the field that splits the results most evenly.",
+      "tradeoff": "A fixed priority is not always the optimal split. I chose natural, predictable dialogs over the theoretical minimum number of turns."
+    },
+    {
+      "decision": "Fail closed on bad data, fail open on refresh errors.",
+      "why": "An empty board from a broken upstream must never replace a good one, but a temporary outage shouldn't take the service down. Staleness becomes the signal instead.",
+      "alternative": "Swap in whatever arrives, or crash on a failed refresh.",
+      "tradeoff": "A genuinely empty board would be treated as a failure. For an active brokerage that is the right bias."
+    },
+    {
+      "decision": "Put freshness in every response, not only in health checks.",
+      "why": "The agent can decide for itself whether a board is too old to quote from, instead of relying only on someone reading an alert.",
+      "alternative": "A health endpoint only.",
+      "tradeoff": "Slightly larger payloads, in exchange for a safety check on every answer."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "Refreshing without stalling voice turns",
+      "body": "Flattening and building a frame from thousands of nested records is CPU work, and running it on the event loop would stall every search once a minute. I moved the build off the loop and made publishing an atomic swap, so searches keep running against the old frame while the new one is built."
+    },
+    {
+      "title": "Choosing the next question without improvising",
+      "body": "Letting the model narrow on its own gave long, inconsistent dialogs. I moved the decision into three rules (not provided, not declined, still discriminating) and added an exclusion list so the agent doesn't loop on a question the caller already answered. Tests pin the behaviour."
+    },
+    {
+      "title": "Messy upstream data",
+      "body": "Records are nested, fields go by different names, prices sometimes arrive as strings or blanks, and timestamps vary in precision. I wrote defensive coercers, a fixed schema that fails at build time if the shape changes, and lenient date parsing. A load missing a field never matches a constraint on that field, so gaps are not treated as wildcards."
+    },
+    {
+      "title": "Silent staleness",
+      "body": "The worst failure for a voice agent is old data that still looks healthy. I made staleness visible at three levels: the age on every response, a health check that fails once the board ages out, and a metric that a single alert can watch for both \"never loaded\" and \"too old\"."
+    }
+  ],
+  "next": [
+    "Connect it to the voice agent's load lookup, which is still a placeholder on the voice side, and pass the suggested question through to the LLM.",
+    "Distance search (\"within 100 miles of Dallas\") using zip-to-coordinate enrichment. The columns are already reserved.",
+    "Fuzzy city matching for speech-to-text variants such as \"St. Louis\" and \"Saint Louis\".",
+    "Persist each snapshot so any quote can be traced back to exactly what the agent saw."
+  ],
+  "lesson": "Separate the decision from the phrasing. Code is good at applying consistent rules to data, and LLMs are good at turning a decision into natural speech. Letting each do only its own part made the dialog shorter, testable and predictable. I would also carry over the habit of treating staleness as part of the answer, not just an ops alert."
+}

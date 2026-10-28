@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Check Reader: Reading bank details off a check without keeping them | Kartikey Shaurya</title>
+  <meta name="description" content="A small API that reads a check or bank document with a vision model, returns structured payment fields, independently verifies the routing number, and is built so sensitive banking data leaves no trace.">
+  <meta name="author" content="Kartikey Shaurya">
+  <link rel="canonical" href="https://kartikeyshaurya.github.io/projects/check-reader.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Check Reader: Reading bank details off a check without keeping them | Kartikey Shaurya">
+  <meta property="og:description" content="A small API that reads a check or bank document with a vision model, returns structured payment fields, independently verifies the routing number, and is built so sensitive banking data leaves no trace.">
+  <meta property="og:url" content="https://kartikeyshaurya.github.io/projects/check-reader.html">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="wrap util">
+    <ul>
+      <li>Chandigarh, India</li>
+    </ul>
+    <ul>
+      <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
+      <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a class="pdf" href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+    </ul>
+  </div>
+
+  <div class="wrap masthead masthead--slim">
+    <a class="logo" href="../index.html">Kartikey Shaurya</a>
+    <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
+  </div>
+
+  <nav class="primary" aria-label="Sections">
+    <ul>
+      <li><a href="../index.html">Front page</a></li>
+      <li><a href="../projects/index.html" class="is-active" aria-current="page">Projects</a></li>
+      <li><a href="../index.html#experience">Experience</a></li>
+      <li><a href="../index.html#about">About</a></li>
+      <li><a class="cta" href="../index.html#hire">Hire me</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" class="case">
+  <section class="wrap case-head">
+    <p class="kicker"><a href="index.html">Projects</a> <span class="fmt">Freight &amp; Logistics AI</span></p>
+    <h1>Reading bank details off a check without keeping them</h1>
+    <p class="dek">A small API that reads a check or bank document with a vision model, returns structured payment fields, independently verifies the routing number, and is built so sensitive banking data leaves no trace.</p>
+    <p class="byline">By <b>Kartikey Shaurya</b> · Check Reader · Creed Infotech, for a US freight brokerage</p>
+  </section>
+
+  <div class="wrap case-grid">
+    <div class="case-body">
+
+      <section aria-labelledby="problem-h">
+        <h2 id="problem-h">The problem</h2>
+        <div class="prose"><p>When a carrier or vendor wants to be paid by direct deposit, they send proof of their bank account. Someone in accounts payable has to read the routing and account numbers off a check image, a void cheque printout, a direct-deposit form or a bank letter, and a single wrong digit sends a payment to the wrong account.</p>
+<p>These documents arrive rotated, photographed at an angle or scanned as multi-page PDFs. Classic OCR struggles with the magnetic-ink font on checks, where several digits look alike, and many documents, such as Canadian void cheques, have no magnetic-ink line at all. And every document contains exactly the kind of data you least want to leak.</p></div>
+      </section>
+
+      <section aria-labelledby="approach-h">
+        <h2 id="approach-h">How I thought about it</h2>
+        <div class="prose prose--lead"><p>I started from an exploratory notebook and asked what a dedicated OCR engine would and would not handle. It would do well on a clean check and badly on everything else the team actually received. A general vision model with a carefully written prompt could cover all the formats and also read the account holder and bank name. The risk was a model that misreads a digit without saying so, so the rest of the design is about catching that.</p>
+<p>To make recognition easier, I sent the font itself. Three captioned reference images of the check font go in before the document, and the prompt names the digit pairs most often confused. That turns a hard recognition task into a matching task. The model also chooses whether it is reading a real check line or printed text, so one endpoint handles both US checks and Canadian formats.</p>
+<p>Then I added a deterministic check the model cannot influence. <b>The service recomputes the routing number checksum itself, and the prompt tells the model never to change a digit to make the checksum pass.</b> An honest, flagged misread is much safer than a plausible invented number. Unreadable characters come back marked, and a failed checksum means a person takes a second look.</p>
+<p>Privacy shaped every other choice. Uploaded files are deleted right after the read, even if the request is cancelled, with a short server-side expiry as a backstop if the process dies. Responses are not stored. Logs carry only flags, never numbers, files or links. The service keeps no database at all, so there is no banking data at rest on our side.</p></div>
+      </section>
+
+      <section aria-labelledby="built-h">
+        <h2 id="built-h">What I built</h2>
+        <ul class="ticks"><li>A single read endpoint that accepts uploaded images and PDFs, or a pre-signed link to a cloud storage object, and treats several files as pages of one document.</li>
+<li>A prompt and reference-image set that grounds the model in the check font and handles both check lines and printed bank details, for US and Canadian layouts.</li>
+<li>Schema-enforced structured output into a typed model: routing, account and check numbers, holder, bank, layout and notes.</li>
+<li>An independent routing-number checksum and a readable rendering of the check line, with no verdict at all for formats where the checksum does not apply.</li>
+<li>File types decided by content, not by name, and neutral renaming because client file names can contain personal data.</li>
+<li>An upload-read-delete lifecycle that cleans up on partial failure and on cancellation, plus per-request token and latency reporting.</li>
+<li>Tests with a fake model client that assert behaviour, cleanup and that logs and errors never contain bank numbers or link signatures.</li></ul>
+      </section>
+
+      <section aria-labelledby="arch-h">
+        <h2 id="arch-h">How it fits together</h2>
+        <figure class="diagram">
+          <pre class="mermaid">flowchart LR
+  CL[&quot;AP system or user&quot;] --&gt; API[&quot;Check reader API&lt;br/&gt;auth, limits, type check&quot;]
+  API --&gt; LNK[&quot;Link fetcher&lt;br/&gt;cloud storage only&quot;]
+  LNK --&gt; STG[&quot;Cloud storage&lt;br/&gt;(pre-signed link)&quot;]
+  API --&gt; RD[&quot;Reader&quot;]
+  REF[&quot;Check font&lt;br/&gt;reference images&quot;] --&gt; RD
+  RD --&gt;|&quot;upload, then delete&quot;| FILES[&quot;Model file store&quot;]
+  RD --&gt; VIS[&quot;Vision model&lt;br/&gt;structured output&quot;]
+  RD --&gt; VAL[&quot;Checksum and&lt;br/&gt;formatting&quot;]
+  VAL --&gt; API</pre>
+          <figcaption>The model reads; deterministic code validates; nothing sensitive is stored or logged along the way.</figcaption>
+        </figure>
+        <dl class="components"><div><dt>Check reader API</dt><dd>Authenticates the caller, enforces size and count limits and identifies file types by content before anything leaves the service.</dd></div>
+<div><dt>Link fetcher</dt><dd>Accepts only secure links to known cloud storage hosts, follows no redirects and caps the download while streaming.</dd></div>
+<div><dt>Reader</dt><dd>Uploads the reference images and document, asks the vision model for a schema-checked answer, and deletes every upload afterwards.</dd></div>
+<div><dt>Validator</dt><dd>Recomputes the routing-number checksum independently and formats the check line, without ever correcting a digit.</dd></div></dl>
+      </section>
+
+      <section aria-labelledby="flow-h">
+        <h2 id="flow-h">What happens when a check is submitted</h2>
+        <ol class="steps"><li>A client sends a check image, PDF or cloud storage link with its service key.</li>
+<li>The service checks the key, file count, size and true file type. Nothing is sent to the model provider until all of that passes.</li>
+<li>The reference images and document pages are uploaded together.</li>
+<li>The vision model receives the captioned reference images, then the document, and returns a structured reading.</li>
+<li>Every uploaded file is deleted, even if the request was cancelled or the model call failed.</li>
+<li>The service recomputes the routing checksum, adds timing and token usage, logs only safe flags and returns the result.</li></ol>
+      </section>
+
+      <section aria-labelledby="dec-h">
+        <h2 id="dec-h">Decisions and trade-offs</h2>
+        <div class="decisions"><article class="decision">
+  <h3>A general vision model instead of a dedicated check OCR engine.</h3>
+  <dl>
+    <dt>Why</dt><dd>Real inputs include photos, scans, void cheques with no check line, deposit forms and bank letters. One model with a good prompt covers all of them and reads names too.</dd>
+    <dt>Instead of</dt><dd>A font-trained OCR engine or a commercial check-reading API.</dd>
+    <dt>The cost</dt><dd>Per-request cost and latency, and the risk of silent misreads, which the checksum and marked characters are there to catch.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Validate deterministically, but never fix.</h3>
+  <dl>
+    <dt>Why</dt><dd>For payment data, a flagged misread that a person reviews is the correct outcome. A number nudged until it passes the checksum is worse than no number.</dd>
+    <dt>Instead of</dt><dd>Automatically correcting digits until the checksum passes.</dd>
+    <dt>The cost</dt><dd>Some reads come back flagged and need a human.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Delete uploads in a cancellation-safe cleanup, with a server-side expiry and no stored responses.</h3>
+  <dl>
+    <dt>Why</dt><dd>These are real bank numbers, so cleanup has to hold under every failure mode, including a client disconnecting mid-request or the process dying.</dd>
+    <dt>Instead of</dt><dd>Inline images with nothing to clean up, or keeping uploads for debugging.</dd>
+    <dt>The cost</dt><dd>More API calls per request, and debugging relies on request IDs instead of stored files.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Accept links only from known cloud storage hosts.</h3>
+  <dl>
+    <dt>Why</dt><dd>A general URL fetcher would turn the service into a proxy into internal networks. A strict allowlist with no redirects closes that, and the service holds no cloud credentials of its own.</dd>
+    <dt>Instead of</dt><dd>A generic fetcher with address checks, or giving the service its own cloud credentials.</dd>
+    <dt>The cost</dt><dd>Callers have to provide a pre-signed link.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Treat logs and errors as a leak surface.</h3>
+  <dl>
+    <dt>Why</dt><dd>Logs and error messages are where sensitive data usually escapes. Logs carry flags only, errors refer to &quot;link 1&quot; instead of the link, and raw model output is never included in an error.</dd>
+    <dt>Instead of</dt><dd>Standard request logging.</dd>
+    <dt>The cost</dt><dd>Less context when debugging a bad read; the request ID is the correlation key.</dd>
+  </dl>
+</article></div>
+      </section>
+
+      <section aria-labelledby="hard-h">
+        <h2 id="hard-h">The hard parts</h2>
+        <ul class="hard"><li><h3>Guaranteed cleanup under every failure</h3><p>The hard cases were a partial upload failure, where some files exist and some do not, and a request cancelled mid-flight. The upload step records every file that succeeded before re-raising the error, and deletion runs in a scope shielded from cancellation. A deletion that finds the file already gone counts as success.</p></li>
+<li><h3>Documents with no check line</h3><p>Canadian void cheques print the details in ordinary type, and deposit forms use rows of single-digit boxes. I moved the prompt from check-line-only to two sources, with explicit guidance on where details sit on each document type and which numbers are not the answer, such as phone numbers, postal codes and numbers inside a company name.</p></li>
+<li><h3>Canadian routing numbers written three ways</h3><p>Canadian institutions print the same routing information in several formats. The prompt normalises them to one form, and the service returns no checksum verdict for them at all, because &quot;failed&quot; would be misleading for a format the checksum was never designed for.</p></li>
+<li><h3>Not leaking credentials through convenience features</h3><p>Pre-signed links carry their credential in the link itself, and common HTTP libraries log full links by default. I quietened that logging, stripped the credential part from any link echoed back, and reported only the type of a transport error, since error messages can quote the link.</p></li></ul>
+      </section>
+
+      <section aria-labelledby="next-h">
+        <h2 id="next-h">What I'd do next</h2>
+        <ul class="ticks ticks--plain"><li>Add a server-side &quot;needs review&quot; flag that combines checksum failure, unreadable characters and disagreement between sources.</li>
+<li>Build a labelled evaluation set to measure field-level accuracy per model and pick the cheapest model that meets the bar.</li>
+<li>Add per-client keys, rate limiting, encrypted transport and an asynchronous job mode for volume.</li>
+<li>Feed results into the carrier payment flow as pre-filled details for a person to confirm.</li></ul>
+      </section>
+
+      <blockquote class="takeaway">
+        <p class="kicker">What I took away</p>
+        <p>Small services that handle sensitive data deserve the same care as big ones, because the risk is in the data, not the code size. The pattern I keep coming back to is simple: let the model extract, let deterministic code validate, and let a person decide when the two disagree. And treat every log line and error message as something that might be read by the wrong person.</p>
+      </blockquote>
+    </div>
+
+    <aside class="case-side">
+      <dl class="facts">
+        <dt>Role</dt><dd>Sole engineer: prompt design, API, privacy hardening, tests</dd>
+        <dt>Context</dt><dd>Creed Infotech, for a US freight brokerage</dd>
+        <dt>Status</dt><dd>MVP</dd>
+        <dt>Stack</dt><dd>Python, FastAPI, OpenAI Responses API, OpenAI Files API, Pydantic, Docker, pytest</dd>
+      </dl>
+      <nav class="toc" aria-label="On this page">
+        <p class="kicker">On this page</p>
+        <ul>
+          <li><a href="#problem-h">The problem</a></li>
+          <li><a href="#approach-h">How I thought about it</a></li>
+          <li><a href="#built-h">What I built</a></li>
+          <li><a href="#arch-h">Architecture</a></li>
+          <li><a href="#flow-h">Key flow</a></li>
+          <li><a href="#dec-h">Decisions</a></li>
+          <li><a href="#hard-h">Hard parts</a></li>
+        </ul>
+      </nav>
+    </aside>
+  </div>
+
+  <nav class="wrap pager" aria-label="More projects">
+    <a class="prev" href="carrier-vetting.html"><span>Previous</span>Vetting carriers by the rulebook, with an LLM that can&#x27;t approve</a><a class="next" href="load-search.html"><span>Next</span>A load board that tells the agent what to ask next</a>
+  </nav>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <p class="logo">Kartikey Shaurya</p>
+      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="../index.html">Front page</a></li>
+        <li><a href="../projects/index.html">All projects</a></li>
+        <li><a href="../index.html#experience">Experience</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Elsewhere</h4>
+      <ul>
+        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+      </ul>
+    </div>
+    <p class="fine">
+      <span>© 2026 Kartikey Shaurya</span>
+      <span>Most client names and internal details are withheld. Architecture is shown at the component level.</span>
+    </p>
+  </div>
+</footer>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: "strict",
+    theme: "base",
+    flowchart: { curve: "basis", htmlLabels: true },
+    themeVariables: {
+      fontFamily: "Schibsted Grotesk, Helvetica Neue, Arial, sans-serif",
+      fontSize: "15px",
+      background: "#faedda",
+      primaryColor: "#fffdf9",
+      primaryBorderColor: "#1c1a17",
+      primaryTextColor: "#1c1a17",
+      lineColor: "#a51c30",
+      secondaryColor: "#faedda",
+      tertiaryColor: "#fffbf4",
+      clusterBkg: "#fffbf4",
+      clusterBorder: "#b9b8ad",
+      edgeLabelBackground: "#faedda"
+    }
+  });
+</script>
+</body>
+</html>

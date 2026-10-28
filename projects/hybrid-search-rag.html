@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Hybrid Search RAG: A document chatbot that would rather say it doesn&#x27;t know | Kartikey Shaurya</title>
+  <meta name="description" content="Built with a colleague: a document Q&amp;A service that combines keyword and semantic search, checks what it retrieves before answering, and ships as a metered API with an admin portal.">
+  <meta name="author" content="Kartikey Shaurya">
+  <link rel="canonical" href="https://kartikeyshaurya.github.io/projects/hybrid-search-rag.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Hybrid Search RAG: A document chatbot that would rather say it doesn&#x27;t know | Kartikey Shaurya">
+  <meta property="og:description" content="Built with a colleague: a document Q&amp;A service that combines keyword and semantic search, checks what it retrieves before answering, and ships as a metered API with an admin portal.">
+  <meta property="og:url" content="https://kartikeyshaurya.github.io/projects/hybrid-search-rag.html">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="wrap util">
+    <ul>
+      <li>Chandigarh, India</li>
+    </ul>
+    <ul>
+      <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
+      <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a class="pdf" href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+    </ul>
+  </div>
+
+  <div class="wrap masthead masthead--slim">
+    <a class="logo" href="../index.html">Kartikey Shaurya</a>
+    <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
+  </div>
+
+  <nav class="primary" aria-label="Sections">
+    <ul>
+      <li><a href="../index.html">Front page</a></li>
+      <li><a href="../projects/index.html" class="is-active" aria-current="page">Projects</a></li>
+      <li><a href="../index.html#experience">Experience</a></li>
+      <li><a href="../index.html#about">About</a></li>
+      <li><a class="cta" href="../index.html#hire">Hire me</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" class="case">
+  <section class="wrap case-head">
+    <p class="kicker"><a href="index.html">Projects</a> <span class="fmt">Applied ML &amp; AI Infrastructure</span></p>
+    <h1>A document chatbot that would rather say it doesn&#x27;t know</h1>
+    <p class="dek">Built with a colleague: a document Q&amp;A service that combines keyword and semantic search, checks what it retrieves before answering, and ships as a metered API with an admin portal.</p>
+    <p class="byline">By <b>Kartikey Shaurya</b> · Hybrid Search RAG · Built with a colleague</p>
+  </section>
+
+  <div class="wrap case-grid">
+    <div class="case-body">
+
+      <section aria-labelledby="problem-h">
+        <h2 id="problem-h">The problem</h2>
+        <div class="prose"><p>Teams have internal documents (PDFs, Markdown, text files) and want a chatbot that answers from them without making things up. Two failures come up again and again. Dense vector search misses exact terms like product codes, acronyms and error strings. And a model handed loosely related passages will answer confidently anyway.</p>
+<p>The users were integrators calling the service from their own apps and backends, and admins who upload documents, issue keys and watch usage. For both groups the API was the product. The chat page we shipped is a test console, not the end-user interface.</p></div>
+      </section>
+
+      <section aria-labelledby="approach-h">
+        <h2 id="approach-h">How I thought about it</h2>
+        <div class="prose prose--lead"><p>We started from the two failure modes and treated them as separate problems. For retrieval misses, we ran keyword and semantic search together: dense embeddings for paraphrase, BM25 sparse vectors for exact tokens. The real question was how to merge them. A weighted sum of scores needs normalisation and a tuned weight per corpus, because cosine similarity and BM25 scores live on different scales. <b>Reciprocal Rank Fusion</b> combines the lists by rank instead, so it needs no tuning. Qdrant can store both vectors on the same point and fuse them on the server, which gave us hybrid search in one query and one datastore instead of running a separate search engine.</p>
+<p>For confident wrong answers, we found that the root cause was structural: top-k retrieval always returns something, even for an off-topic question. So we changed the shape of the pipeline instead of tweaking the prompt. A LangGraph state machine retrieves, has the LLM grade every chunk for relevance in one batched, structured call, and then branches. If anything relevant survives, it answers from that context only and cites its sources. If nothing survives, it returns a fixed &quot;I don&#x27;t have this information&quot; reply.</p>
+<p>The principle we settled on was that <b>the decision to answer belongs to the graph, not the model</b>, and the model only works from evidence that passed a check. Around that we built the product side: hashed, rate-limited and quota-metered API keys for integrators, and an admin portal for documents, keys and usage. One shared answer function serves the API, the command line and ingestion, so those paths can&#x27;t drift apart.</p></div>
+      </section>
+
+      <section aria-labelledby="built-h">
+        <h2 id="built-h">What I built</h2>
+        <ul class="ticks"><li>Hybrid retrieval in Qdrant: dense OpenAI embeddings and local BM25 sparse vectors on the same point, fused with Reciprocal Rank Fusion in a single query.</li>
+<li>A LangGraph workflow that retrieves, grades, and then either answers with citations or falls back to a fixed reply.</li>
+<li>Batched relevance grading with a typed yes or no per chunk, so grading several chunks costs roughly one round trip instead of one per chunk.</li>
+<li>An ingestion pipeline for PDF, Markdown and text that chunks with overlap, embeds each chunk both ways and keeps source and page details for citations.</li>
+<li>Metered API keys that are stored only as hashes and shown once, with rotation, revocation, per-minute rate limits and monthly quotas.</li>
+<li>A React admin portal for consumers, keys, document upload and deletion, and usage analytics charts.</li>
+<li>Document deletion that also removes the document&#x27;s vectors, so a withdrawn file stops answering questions.</li>
+<li>A single-container deployment where only the API is exposed and the datastores stay on an internal network.</li></ul>
+      </section>
+
+      <section aria-labelledby="arch-h">
+        <h2 id="arch-h">How it fits together</h2>
+        <figure class="diagram">
+          <pre class="mermaid">flowchart LR
+  A[&quot;Integrator app&quot;] --&gt; C[&quot;Chat API&lt;br/&gt;key check, rate limit, quota&quot;]
+  B[&quot;Admin portal&quot;] --&gt; D[&quot;Admin API&lt;br/&gt;documents, keys, usage&quot;]
+  C --&gt; E[&quot;LangGraph workflow&lt;br/&gt;retrieve, grade, answer&quot;]
+  E --&gt; F[&quot;Qdrant&lt;br/&gt;dense and BM25 vectors&quot;]
+  E --&gt; G[&quot;LLM&lt;br/&gt;grading and generation&quot;]
+  D --&gt; H[&quot;Ingestion&lt;br/&gt;chunk and embed&quot;]
+  H --&gt; F
+  C --&gt; I[&quot;Counters&lt;br/&gt;Redis&quot;]
+  C --&gt; J[&quot;Accounts and usage logs&lt;br/&gt;PostgreSQL&quot;]
+  D --&gt; J</pre>
+          <figcaption>Two entry points share one backend: integrators reach the RAG workflow through metered keys, and admins manage the corpus and the keys through the portal.</figcaption>
+        </figure>
+        <dl class="components"><div><dt>Hybrid vector store</dt><dd>Qdrant holds a dense and a sparse vector for every chunk and fuses the two result lists on the server.</dd></div>
+<div><dt>RAG workflow</dt><dd>A small LangGraph state machine that retrieves, grades and then branches to an answer or a fixed fallback.</dd></div>
+<div><dt>Relevance grader</dt><dd>One batched LLM call with structured output that keeps only the chunks that actually relate to the question.</dd></div>
+<div><dt>Metering layer</dt><dd>Checks each API key, applies per-minute and monthly limits, and logs every request for analytics.</dd></div>
+<div><dt>Ingestion</dt><dd>Turns uploaded documents into overlapping chunks with both embeddings and the source details needed for citations.</dd></div>
+<div><dt>Admin portal</dt><dd>A React app for managing consumers, keys and documents and for viewing usage over time.</dd></div></dl>
+      </section>
+
+      <section aria-labelledby="flow-h">
+        <h2 id="flow-h">What happens to a question</h2>
+        <ol class="steps"><li>An integrator sends a question with an API key. The service hashes the key, looks it up and checks that the key and its owner are active.</li>
+<li>The per-minute rate limit and the monthly quota are checked. Over either limit, the caller gets a clear rejection with a hint about when to retry.</li>
+<li>The question is embedded, and Qdrant runs dense and BM25 search together and returns the top fused chunks.</li>
+<li>The LLM grades every retrieved chunk for relevance in one batched call, and unrelated chunks are dropped.</li>
+<li>If any chunks survive, the model answers from that context only and cites the source files and pages.</li>
+<li>If none survive, the graph returns a fixed &quot;I don&#x27;t have this information&quot; reply instead of letting the model improvise.</li>
+<li>The request is logged for usage analytics without adding to response time, and failed requests are logged as well.</li></ol>
+      </section>
+
+      <section aria-labelledby="dec-h">
+        <h2 id="dec-h">Decisions and trade-offs</h2>
+        <div class="decisions"><article class="decision">
+  <h3>Hybrid retrieval fused with Reciprocal Rank Fusion inside Qdrant</h3>
+  <dl>
+    <dt>Why</dt><dd>Dense vectors handle paraphrase and BM25 handles exact tokens. Fusing by rank avoids calibrating two incompatible score scales, and doing it on the server means one round trip and one datastore.</dd>
+    <dt>Instead of</dt><dd>Dense-only search, or a separate keyword search engine plus a vector database with fusion in the application.</dd>
+    <dt>The cost</dt><dd>We accept a fixed fusion with no tuned weighting. Two stores would allow tuning but double the operational work.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>A relevance-grading step before generation</h3>
+  <dl>
+    <dt>Why</dt><dd>Top-k retrieval always returns something. Grading lets the graph route to a deterministic fallback instead of letting the model improvise from weak context. The grader is deliberately lenient: it drops clearly unrelated chunks rather than reranking.</dd>
+    <dt>Instead of</dt><dd>A similarity-score cut-off, or a cross-encoder reranker.</dd>
+    <dt>The cost</dt><dd>It adds one extra LLM round per question, which we kept small by grading all chunks concurrently. A cross-encoder would be cheaper per call but is another model to host.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>A LangGraph state machine instead of a linear chain</h3>
+  <dl>
+    <dt>Why</dt><dd>The pipeline has a real branch, and an explicit graph with typed state makes it easy to add nodes later, such as query rewriting or a retry when nothing relevant comes back.</dd>
+    <dt>Instead of</dt><dd>A plain chain with an if statement.</dd>
+    <dt>The cost</dt><dd>It is a little more machinery than four steps strictly need, in exchange for cheap extension later.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>One shared answer function for every entry point</h3>
+  <dl>
+    <dt>Why</dt><dd>The API, the command line and the ingestion routes all call the same function, so their behaviour can&#x27;t drift apart.</dd>
+    <dt>Instead of</dt><dd>A separate code path per interface.</dd>
+    <dt>The cost</dt><dd>That one module becomes critical, so changes to it need care.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>A fast hash for API keys and a slow one for passwords</h3>
+  <dl>
+    <dt>Why</dt><dd>Keys are long random values, so a fast hash is safe and allows a direct indexed lookup on every request. Human passwords are low-entropy and need a deliberately slow hash.</dd>
+    <dt>Instead of</dt><dd>The same slow password hash for keys too.</dd>
+    <dt>The cost</dt><dd>A slow hash on every chat request would add CPU time per call and rule out indexed lookups, so the split is worth the extra rule to remember.</dd>
+  </dl>
+</article></div>
+      </section>
+
+      <section aria-labelledby="hard-h">
+        <h2 id="hard-h">The hard parts</h2>
+        <ul class="hard"><li><h3>Staying grounded when retrieval always returns results</h3><p>Top-k search never comes back empty, so the model always had something to riff on. The fix was structural: an explicit grading step and a branch to a fixed fallback, combined with a generation prompt that says to use only the given context and cite it.</p></li>
+<li><h3>Grading latency growing with the number of chunks</h3><p>Grading chunks one at a time meant one LLM call after another. We switched to a single batched call with structured output, which runs the grades concurrently and returns a typed yes or no, so there is no free text to parse.</p></li>
+<li><h3>Usage rows missing when requests failed</h3><p>Errors weren&#x27;t showing up in analytics, because the web framework drops background tasks when a handler raises. Failed requests now log inline before the error is returned, and the logger swallows its own errors so it can never break a chat request.</p></li>
+<li><h3>Making document deletion actually forget</h3><p>Deleting a file left its chunks in the vector store, still answering questions. Deletion now also removes every vector tagged with that document&#x27;s source, which works because ingestion normalises the source name consistently.</p></li></ul>
+      </section>
+
+      <section aria-labelledby="next-h">
+        <h2 id="next-h">What I'd do next</h2>
+        <ul class="ticks ticks--plain"><li>Conversation memory, with a query-rewrite step that turns follow-up questions into standalone ones.</li>
+<li>A corrective retry loop that rewrites the query once and retrieves again before falling back.</li>
+<li>An evaluation set with known source passages, to measure recall and faithfulness for dense, sparse and hybrid search and to tune chunk size and top-k from data.</li>
+<li>Idempotent background ingestion and separate corpora per tenant.</li></ul>
+      </section>
+
+      <blockquote class="takeaway">
+        <p class="kicker">What I took away</p>
+        <p>When a model misbehaves, look for the structural cause before reaching for the prompt. Retrieval that always returns something will always give the model something to improvise from, and the fix was a branch in the graph, not better wording. I&#x27;d carry that into the next system: put the decision to answer in code, and let the model work only on evidence that passed a check.</p>
+      </blockquote>
+    </div>
+
+    <aside class="case-side">
+      <dl class="facts">
+        <dt>Role</dt><dd>Co-developer, built with a colleague: retrieval, RAG workflow, API and admin portal</dd>
+        <dt>Context</dt><dd>Built with a colleague</dd>
+        <dt>Status</dt><dd>Production-style MVP</dd>
+        <dt>Stack</dt><dd>Python, FastAPI, LangGraph, Qdrant, BM25 (FastEmbed), OpenAI embeddings and GPT-4o mini, PostgreSQL, Redis, React and Ant Design, Docker Compose</dd>
+      </dl>
+      <nav class="toc" aria-label="On this page">
+        <p class="kicker">On this page</p>
+        <ul>
+          <li><a href="#problem-h">The problem</a></li>
+          <li><a href="#approach-h">How I thought about it</a></li>
+          <li><a href="#built-h">What I built</a></li>
+          <li><a href="#arch-h">Architecture</a></li>
+          <li><a href="#flow-h">Key flow</a></li>
+          <li><a href="#dec-h">Decisions</a></li>
+          <li><a href="#hard-h">Hard parts</a></li>
+        </ul>
+      </nav>
+    </aside>
+  </div>
+
+  <nav class="wrap pager" aria-label="More projects">
+    <a class="prev" href="face-verification.html"><span>Previous</span>Checking the selfie against the licence, and explaining the retake</a><a class="next" href="brain-response-studio.html"><span>Next</span>Drop in a clip, watch a predicted brain respond</a>
+  </nav>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <p class="logo">Kartikey Shaurya</p>
+      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="../index.html">Front page</a></li>
+        <li><a href="../projects/index.html">All projects</a></li>
+        <li><a href="../index.html#experience">Experience</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Elsewhere</h4>
+      <ul>
+        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+      </ul>
+    </div>
+    <p class="fine">
+      <span>© 2026 Kartikey Shaurya</span>
+      <span>Most client names and internal details are withheld. Architecture is shown at the component level.</span>
+    </p>
+  </div>
+</footer>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: "strict",
+    theme: "base",
+    flowchart: { curve: "basis", htmlLabels: true },
+    themeVariables: {
+      fontFamily: "Schibsted Grotesk, Helvetica Neue, Arial, sans-serif",
+      fontSize: "15px",
+      background: "#faedda",
+      primaryColor: "#fffdf9",
+      primaryBorderColor: "#1c1a17",
+      primaryTextColor: "#1c1a17",
+      lineColor: "#a51c30",
+      secondaryColor: "#faedda",
+      tertiaryColor: "#fffbf4",
+      clusterBkg: "#fffbf4",
+      clusterBorder: "#b9b8ad",
+      edgeLabelBackground: "#faedda"
+    }
+  });
+</script>
+</body>
+</html>

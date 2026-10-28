@@ -1,0 +1,150 @@
+{
+  "slug": "shipper-approval-agent",
+  "theme": "freight",
+  "order": 1,
+  "title": "Shipper Approval Agent",
+  "headline": "An AI credit check where the model advises and never decides",
+  "dek": "A verification platform that gathers evidence on every new shipper, asks two independent AI reviewers for an opinion, and leaves the actual decision to a deterministic, versioned policy engine that a finance team can test and sign off on.",
+  "summary": "Automated shipper verification: AI reviews advise, a deterministic policy engine decides, humans confirm every rejection.",
+  "client": "Creed Infotech, for a US freight brokerage",
+  "role": "Primary engineer: architecture, backend, AI layer, operator console",
+  "status": "Pilot",
+  "stack": [
+    "Python",
+    "FastAPI",
+    "PostgreSQL",
+    "MongoDB",
+    "MinIO",
+    "LangGraph",
+    "Gemini",
+    "Langfuse",
+    "Twilio Voice",
+    "React"
+  ],
+  "problem": [
+    "Before a broker can move freight for a new shipper, the accounts receivable team has to verify the company: state business registration, business identity, credit and insurance standing, public presence, recorded phone calls to the registered numbers, and a credit application. The team did this by hand from a written procedure, pulling evidence from many sources and recording every step.",
+    "It is a credit-risk decision with costs in both directions. A wrong approval exposes the brokerage to bad debt and fraud. A slow approval holds up revenue and annoys a customer who wants to ship today. Any automation had to be faster than the manual process and, just as important, explainable enough that finance would trust it."
+  ],
+  "approach": [
+    "The first thing I noticed was that the obvious design, an agent that reads the evidence and outputs \"approve\" or \"reject\", would never be signed off. Finance has to defend every approval, and a language model gives different answers on different runs over the same pages. So I drew the trust boundary before writing any code: <b>the model can read messy evidence and give a structured opinion, but it can never set a case status.</b> A pure, versioned policy function makes the call from verified facts, and it never sees model text.",
+    "The second constraint was that \"we could not get the evidence\" is a very different thing from \"the evidence contradicts the shipper\". Treating both as a rejection would let a provider outage reject a legitimate customer. I split them into two outcomes: missing or stale evidence sends the case to collect more, and a confirmed rule breach sends it to a human for rejection review. The system fails closed in both directions. It never approves on evidence it does not have, and it never finalises a rejection without a person.",
+    "For the AI layer I wanted two opinions that were actually independent. If the second reviewer can see the first one's answer, you get the same opinion twice. So the second review does its own fresh evidence pass and never receives the first review's conclusion. Disagreement is not resolved by the model: it routes to a human.",
+    "Finally, I weighed the architecture the original spec asked for, a message broker and a worker pool, against the real workload. Cases spend most of their life waiting days for people to make phone calls, so throughput was low and correctness was everything. I chose a database-backed worker with a transactional outbox: every state change and its side effects commit together, with one fewer system to operate, and a clear seam where a broker can be added later."
+  ],
+  "built": [
+    "A case state machine that takes a shipper from intake through evidence collection, phone verification, two AI reviews and policy evaluation to a human outcome.",
+    "Pluggable evidence adapters for state registries, commercial credit and business-identity providers, search listings and the company's own website, each with a deterministic mock so the whole pipeline runs offline.",
+    "A field-by-field comparison matrix of submitted data against every source, with clear semantics for missing versus contradicting values.",
+    "Two isolated AI reviews on Gemini with a strict response schema, reason codes and a confidence score, traced in Langfuse so every recommendation can be compared with the policy outcome.",
+    "A pure, versioned policy engine covered by a golden test set, which writes the failed gates and a readable explanation onto every decision.",
+    "An optional LangGraph evidence agent that chains sources together and widens a missed lookup, but cannot decide anything and fails closed if it breaks.",
+    "A browser softphone in the operator console for recorded verification calls, with AI transcription stored as evidence only.",
+    "Human review with a two-person rule for overrides, a tamper-evident audit trail, role-based access, and a decision push back to the brokerage's in-house TMS that is safe to run exactly once."
+  ],
+  "architecture": {
+    "mermaid": "flowchart LR\n  TMS[\"Brokerage TMS\"] -->|\"new shipper\"| API[\"Case API\"]\n  UI[\"Operator console\"] --> API\n  API --> DB[(\"Case database\")]\n  WK[\"Pipeline worker\"] --> DB\n  WK --> COL[\"Evidence collector<br/>service\"]\n  WK --> AI[\"Two isolated<br/>AI reviews\"]\n  WK --> POL[\"Deterministic<br/>policy engine\"]\n  UI -->|\"verification calls\"| TEL[\"Telephony\"]\n  API --> DOCS[(\"Evidence and<br/>audit store\")]\n  API -->|\"confirmed decision\"| TMS",
+    "caption": "The worker gathers evidence and AI opinions, but only the policy engine and a human reviewer can move a case to a decision.",
+    "components": [
+      {
+        "name": "Case API",
+        "desc": "Receives new shippers from the TMS, serves the operator console and enforces role-based access on every action."
+      },
+      {
+        "name": "Pipeline worker",
+        "desc": "Advances each case through its stages in its own transaction, so a failure in one case never affects another and work resumes from the last saved state."
+      },
+      {
+        "name": "Evidence collector",
+        "desc": "A separate service that owns all external lookups and answers in a small, fixed status vocabulary."
+      },
+      {
+        "name": "AI reviews",
+        "desc": "Two independent model reviews that return structured, schema-checked opinions with reason codes; advisory only."
+      },
+      {
+        "name": "Policy engine",
+        "desc": "A pure, versioned function that turns verified facts into one of three outcomes and explains which gates failed."
+      },
+      {
+        "name": "Evidence and audit store",
+        "desc": "Raw provider responses, recordings, uploaded documents and an append-only, tamper-evident audit trail."
+      }
+    ]
+  },
+  "flow": {
+    "title": "What happens when a new shipper arrives",
+    "steps": [
+      "The brokerage's TMS queues a new shipper, and the platform creates a case exactly once, even if the same shipper arrives twice.",
+      "The worker collects evidence from registries, credit and identity providers, search listings and the company website, and builds a comparison matrix against what the shipper submitted.",
+      "Operators call every registered phone number from the console. Calls are recorded and transcribed as evidence.",
+      "The first AI reviewer reads a bundle of submitted data and distilled signals and returns a structured opinion.",
+      "The second AI reviewer gathers its own fresh evidence and reviews the case without seeing the first opinion.",
+      "The policy engine evaluates the verified facts and returns approved, needs more evidence, or pending rejection review, with an explanation.",
+      "For a pending rejection, one reviewer can confirm it, and turning it into an approval takes two different reviewers.",
+      "The confirmed decision is sent to the TMS inside the reviewer's own request, so a case never shows as closed while the TMS still holds it open."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "The model is advisory; a deterministic policy function decides.",
+      "why": "Finance needs a decision that is explainable, testable and versioned. A pure function over verified facts gives me a golden test set and a readable list of failed gates on every case.",
+      "alternative": "Letting the agent output the final status, which is where the first prototype was heading.",
+      "tradeoff": "Every rule has to be encoded explicitly, which is more upfront work and can feel rigid. In exchange, every decision can be reproduced and defended."
+    },
+    {
+      "decision": "Two different \"no\" outcomes: needs more evidence, and pending rejection review.",
+      "why": "An outage or a blocked source must never turn into a rejection. Splitting the outcomes also tells the operator the right next action.",
+      "alternative": "A single rejected bucket.",
+      "tradeoff": "More states to model and test, but the system fails closed in a way that matches how the team actually works."
+    },
+    {
+      "decision": "The second AI review is blind to the first.",
+      "why": "Two reviewers who see each other's answer give one opinion twice. A fresh evidence pass and a separate trace make the second opinion worth having.",
+      "alternative": "A single review, or a critic pass that reads the first answer.",
+      "tradeoff": "Roughly double the model cost and latency per case, plus a second round of lookups that caching softens."
+    },
+    {
+      "decision": "A database-backed worker with a transactional outbox instead of a message broker.",
+      "why": "Cases wait days on people, so throughput is low and correctness is high. Committing state and side effects together keeps the guarantees with one fewer system to run.",
+      "alternative": "A message broker with a worker pool, as the original architecture called for.",
+      "tradeoff": "A polling delay and a lower ceiling on horizontal scale, which I accepted because the outbox is already the place to add a broker later."
+    },
+    {
+      "decision": "External lookups moved into a separate collector service.",
+      "why": "Web lookups are the most fragile part of the system. Keeping them out of the decision system made it smaller, easier to test and free of browser dependencies.",
+      "alternative": "Keeping the lookup code inside the agent, where it originally lived.",
+      "tradeoff": "A network hop and another service to deploy, made safe with an explicit mapping from every collector answer to a source status."
+    },
+    {
+      "decision": "\"Blocked\" and \"error\" are different statuses with different owners.",
+      "why": "A provider refusing automation is normal: a person can get that evidence by hand, so it opens a manual upload slot. A real error means an engineer has to fix something.",
+      "alternative": "Treating every failed lookup as an error.",
+      "tradeoff": "Every adapter needs mapping discipline, and retries apply only to genuine transport failures."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "An upstream API that could answer with the wrong record",
+      "body": "During live testing I found that some TMS responses could succeed while describing a different record from the one requested. I made the client validate identifiers before sending and require every response to prove it is about the record asked for. Intake was then tested read-only against the live system before anything was allowed to write."
+    },
+    {
+      "title": "False rejections hiding in comparators",
+      "body": "Once real data reached the comparison matrix, several small parsing bugs showed up as false mismatches, which is the rejection path. Trailing country names, abbreviated street types, invisible whitespace and non-US addresses all looked like contradictions. I fixed them in one shared normaliser, kept each fix narrow, and bounded them with tests in both directions."
+    },
+    {
+      "title": "One bad response shape taking down every source",
+      "body": "Lookups run in parallel, and the collector could answer errors in more than one shape. Code that assumed one shape could crash and take the whole evidence pass with it. I made \"a lookup never raises\" a documented, tested invariant, so one source failing becomes one missing piece of evidence."
+    },
+    {
+      "title": "Exactly-once decisions without idempotency keys",
+      "body": "The TMS decision routes had no idempotency support. The client reads the current status first, sends nothing if the decision is already applied, refuses to overwrite a different decision, and never blindly retries a send whose answer was lost. It re-reads and trusts only a confirmed status."
+    }
+  ],
+  "next": [
+    "Finish hardening the deployment path before calling it production: encrypted transport everywhere, a non-root image, and startup checks that fail closed on unsafe configuration.",
+    "Commit audit entries atomically with state changes and add a job that continuously verifies the audit trail.",
+    "Cache website extraction against page content so repeated reads of the same page give the same answer.",
+    "Load policy versions from the database with a sign-off workflow for the finance team."
+  ],
+  "lesson": "The most useful thing I did on this project was decide what the model is not allowed to do before deciding what it should do. Once the model became an advisor with a fixed output schema and a pure function owned the decision, every hard question (testing, audit, explaining a rejection to a customer) became an ordinary engineering problem. I now start every AI system by drawing that trust boundary first."
+}

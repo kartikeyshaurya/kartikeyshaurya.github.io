@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Carrier Vetting Agent: Vetting carriers by the rulebook, with an LLM that can&#x27;t approve | Kartikey Shaurya</title>
+  <meta name="description" content="A multi-tenant SaaS that turns a freight brokerage&#x27;s carrier-vetting procedure into five LangGraph workflows. Rules decide, the model can only hold or lower a verdict, and people are pulled in exactly where the procedure needs them.">
+  <meta name="author" content="Kartikey Shaurya">
+  <link rel="canonical" href="https://kartikeyshaurya.github.io/projects/carrier-vetting.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Carrier Vetting Agent: Vetting carriers by the rulebook, with an LLM that can&#x27;t approve | Kartikey Shaurya">
+  <meta property="og:description" content="A multi-tenant SaaS that turns a freight brokerage&#x27;s carrier-vetting procedure into five LangGraph workflows. Rules decide, the model can only hold or lower a verdict, and people are pulled in exactly where the procedure needs them.">
+  <meta property="og:url" content="https://kartikeyshaurya.github.io/projects/carrier-vetting.html">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="wrap util">
+    <ul>
+      <li>Chandigarh, India</li>
+    </ul>
+    <ul>
+      <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
+      <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a class="pdf" href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+    </ul>
+  </div>
+
+  <div class="wrap masthead masthead--slim">
+    <a class="logo" href="../index.html">Kartikey Shaurya</a>
+    <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
+  </div>
+
+  <nav class="primary" aria-label="Sections">
+    <ul>
+      <li><a href="../index.html">Front page</a></li>
+      <li><a href="../projects/index.html" class="is-active" aria-current="page">Projects</a></li>
+      <li><a href="../index.html#experience">Experience</a></li>
+      <li><a href="../index.html#about">About</a></li>
+      <li><a class="cta" href="../index.html#hire">Hire me</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" class="case">
+  <section class="wrap case-head">
+    <p class="kicker"><a href="index.html">Projects</a> <span class="fmt">Freight &amp; Logistics AI</span></p>
+    <h1>Vetting carriers by the rulebook, with an LLM that can&#x27;t approve</h1>
+    <p class="dek">A multi-tenant SaaS that turns a freight brokerage&#x27;s carrier-vetting procedure into five LangGraph workflows. Rules decide, the model can only hold or lower a verdict, and people are pulled in exactly where the procedure needs them.</p>
+    <p class="byline">By <b>Kartikey Shaurya</b> · Carrier Vetting Agent · Client project for a US freight brokerage&#x27;s carrier-vetting team</p>
+  </section>
+
+  <div class="wrap case-grid">
+    <div class="case-body">
+
+      <section aria-labelledby="problem-h">
+        <h2 id="problem-h">The problem</h2>
+        <div class="prose"><p>Before a freight brokerage gives a carrier a load, its vetting team checks that carrier by hand against FMCSA and several commercial carrier-safety platforms. Then it applies a dense procedure: hard blocks, exceptions, authority-age thresholds that vary by equipment type, complaint checks, and for every load a phone call in which the carrier itself must state details such as the VIN and the driver&#x27;s licence. Fraud in this space (double brokering, identity theft, stolen loads) is expensive, so the stakes are high and the work is slow.</p>
+<p>The team&#x27;s procedure covered five processes: approving a new carrier, handling exceptions that need a manager, onboarding, the per-load checks, and the follow-ups after them. They wanted it automated, but any automation had to be auditable clause by clause, safe to roll out gradually, and impossible for a clever email or caller to manipulate.</p></div>
+      </section>
+
+      <section aria-labelledby="approach-h">
+        <h2 id="approach-h">How I thought about it</h2>
+        <div class="prose prose--lead"><p>The first thing I noticed was that the hard question was not how to get an LLM to vet carriers but where it must have no say. Approving a carrier is a fraud-prevention decision. It has to be deterministic, traceable to a specific clause of the procedure, versioned and regression-tested. A prompt can drift silently between model versions and can&#x27;t be unit-tested. So every rule became a versioned YAML expression run by a small sandboxed evaluator, each tagged with the clause it implements and backed by a pair of test fixtures that trigger it and clear it.</p>
+<p>The model still had real value: reading complaint text, extracting fields from certificates and licences, and drafting emails. To keep its judgement out of the approval itself, I made the final verdict the minimum of the rule verdict and the model verdict over an ordered set: disapproved, needs a person, good to go. <b>That turns &quot;the LLM cannot approve a carrier&quot; from a hope into a structural property.</b> If the model ever tries to upgrade a verdict, it is logged as a prompt defect.</p>
+<p>Two clocks shaped the orchestration. The business wanted bounded machine time per carrier, and a manager might answer an exception hours later. I chose LangGraph because a checkpointed graph can pause at an interrupt and resume exactly where it stopped. The five-minute cap counts machine work only: every serial step checks the deadline before calling out, a cut run degrades to &quot;needs a person&quot; instead of failing, and human waits sit outside the clock.</p>
+<p>For phone verification I looked at the naive design, an agent asking &quot;is the VIN 1ABC...?&quot;, and saw that it defeats the purpose. So the voice agent receives only the questions, never the expected answers. It reports what the carrier said and the backend does the comparison. The agent has nothing to leak and can&#x27;t be talked into confirming anything. The same caution drove rollout: shadow mode records verdicts and writes nothing, assist mode writes only the safest outcome, and auto mode comes only after measured agreement with the team.</p></div>
+      </section>
+
+      <section aria-labelledby="built-h">
+        <h2 id="built-h">What I built</h2>
+        <ul class="ticks"><li>Parallel checks across every safety source with per-source time budgets and one retry on transport errors. An unavailable source forces human review, never a silent pass.</li>
+<li>A rules engine over versioned YAML with a whitelisted expression language, where every hit carries the procedure clause it came from.</li>
+<li>The hold-or-lower guard on every model verdict, with a dedicated test that proves the model can&#x27;t upgrade an outcome.</li>
+<li>Human-in-the-loop steps as graph interrupts, with a work queue and a console decision that resumes the paused run.</li>
+<li>A phone verification agent on Cartesia that asks questions without knowing the answers, reads a recording-consent line where required, and hands answers back for field-aware comparison.</li>
+<li>Per-tenant run modes (shadow, assist, auto), an evidence pack for every step and an audit log entry for every decision.</li>
+<li>An offline mode for everything (fake LLM, fixture platforms, fake telephony) and an eval script that replays recorded team decisions and fails on any false approval.</li>
+<li>A role-based React console covering the queue, decisions, exceptions, the rules editor, live run timelines and the audit trail.</li></ul>
+      </section>
+
+      <section aria-labelledby="arch-h">
+        <h2 id="arch-h">How it fits together</h2>
+        <figure class="diagram">
+          <pre class="mermaid">flowchart LR
+  B[&quot;Brokers, vetting team,&lt;br/&gt;managers&quot;] --&gt; F[&quot;React console&quot;]
+  T[&quot;Brokerage TMS&quot;] --&gt;|&quot;webhooks&quot;| A[&quot;API&lt;br/&gt;(tenant, roles, modes)&quot;]
+  F --&gt; A
+  A --&gt; Q[&quot;Job queue&quot;]
+  Q --&gt; W[&quot;Graph worker&lt;br/&gt;LangGraph&quot;]
+  W --&gt; P[&quot;Safety platforms&lt;br/&gt;(checked in parallel)&quot;]
+  W --&gt; R[&quot;Rules engine&lt;br/&gt;versioned YAML&quot;]
+  W --&gt; L[&quot;LLM&lt;br/&gt;structured outputs&quot;]
+  W --&gt; V[&quot;Voice agent&lt;br/&gt;questions only&quot;]
+  V &lt;--&gt; C[&quot;Carrier dispatcher&quot;]
+  W --&gt; D[(&quot;PostgreSQL&lt;br/&gt;evidence and audit&quot;)]
+  W --&gt;|&quot;mode-gated writes&quot;| T</pre>
+          <figcaption>Workflows run as LangGraph graphs on a worker; rules decide, the LLM advises, the voice agent only asks, and every write back to the TMS is gated by the tenant&#x27;s run mode.</figcaption>
+        </figure>
+        <dl class="components"><div><dt>Runner</dt><dd>The single entry point that validates input, seeds the deadline and run mode, executes the graph with a checkpointer and turns interrupts into waiting runs.</dd></div>
+<div><dt>Platform connectors</dt><dd>One contract for every safety source, returning typed fraud and safety signals; a failed source becomes missing data that forces review.</dd></div>
+<div><dt>Rules engine</dt><dd>Evaluates versioned YAML rules with a restricted expression language and returns a verdict with clause references and the rule-set version.</dd></div>
+<div><dt>LLM gateway</dt><dd>Schema-locked structured outputs under a fixed instruction that outside text is data, never instructions, with a fake mode when no key is set.</dd></div>
+<div><dt>Voice agent</dt><dd>Calls the carrier, asks one question at a time and reports answers verbatim, without ever holding the expected values.</dd></div>
+<div><dt>Mode-gated writers</dt><dd>The only path to the TMS or broker email, and they check the tenant&#x27;s run mode before writing anything.</dd></div></dl>
+      </section>
+
+      <section aria-labelledby="flow-h">
+        <h2 id="flow-h">How a carrier gets approved, or doesn&#x27;t</h2>
+        <ol class="steps"><li>The TMS or the console starts a run. The API resolves the tenant from the credential, checks the plan quota and reads the run mode.</li>
+<li>Intake validates the required fields. If anything is missing, the broker gets an &quot;incomplete&quot; email and the run ends.</li>
+<li>The graph fans out to every safety source in parallel, each within its own time budget, and stores the evidence.</li>
+<li>A cross-match step reconciles identity, authority age, inspections, contact details and safety rates across sources.</li>
+<li>The rules engine evaluates every rule. Any hard block means disapproved, any conditional rule or missing source means a person decides, otherwise the carrier is good to go.</li>
+<li>The LLM writes reasons and a broker email draft. Its verdict passes through the minimum, so it can only make the outcome more cautious.</li>
+<li>Depending on the run mode, the result is written back or queued for the vetting team, and an audit entry is always recorded.</li></ol>
+      </section>
+
+      <section aria-labelledby="dec-h">
+        <h2 id="dec-h">Decisions and trade-offs</h2>
+        <div class="decisions"><article class="decision">
+  <h3>Procedure rules are code (YAML plus a sandboxed evaluator), never prompts.</h3>
+  <dl>
+    <dt>Why</dt><dd>In a fraud and compliance workflow a verdict must be deterministic, traceable to a clause, versioned and testable. Every hit names its rule and clause, and the rule set carries a version tag.</dd>
+    <dt>Instead of</dt><dd>Encode the procedure in a long prompt and let the LLM decide.</dd>
+    <dt>The cost</dt><dd>Procedure changes need YAML edits plus fixtures, not just a prompt tweak, and the expression language is deliberately small.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Hold or lower: the final verdict is the minimum of the rule verdict and the model verdict.</h3>
+  <dl>
+    <dt>Why</dt><dd>The model is good at reading and writing but must never be the thing that approves a carrier. A minimum over ordered verdicts makes that structural.</dd>
+    <dt>Instead of</dt><dd>Let the model override the rules when it is confident.</dd>
+    <dt>The cost</dt><dd>The model can&#x27;t rescue a false rule block, so a person reviews it instead. For fraud, that is the right direction to fail.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>LangGraph with a checkpointer and interrupts for human steps.</h3>
+  <dl>
+    <dt>Why</dt><dd>Manager approvals take hours, so a run must pause durably and resume exactly where it stopped. Parallel fan-out across safety sources comes with it.</dd>
+    <dt>Instead of</dt><dd>Task-queue chains with a status column, or Temporal.</dd>
+    <dt>The cost</dt><dd>The checkpointer has to be wired correctly, and wiring the durable store into every path is still on my list. Temporal offers stronger guarantees but is far heavier for a small team.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>The voice agent never receives the expected values.</h3>
+  <dl>
+    <dt>Why</dt><dd>The procedure says the carrier must state each value. An agent that knows the VIN can leak it or be talked into confirming it. Questions-only makes the rule hold by construction, and the agent has no database access.</dd>
+    <dt>Instead of</dt><dd>Give the agent the expected values and ask it to compare.</dd>
+    <dt>The cost</dt><dd>Two deployables sharing a contract, and answers have to come back through a callback or be read from the transcript afterwards.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Shadow, assist and auto run modes per tenant and per workflow.</h3>
+  <dl>
+    <dt>Why</dt><dd>Adoption needs trust. Shadow mode lets the team compare the agent&#x27;s verdicts with their own at zero risk, assist automates only hard-block disapprovals, and auto follows measured agreement.</dd>
+    <dt>Instead of</dt><dd>All-or-nothing automation.</dd>
+    <dt>The cost</dt><dd>More branches in every write step, and mode bugs are subtle.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Structured outputs only, with no model-driven tool selection.</h3>
+  <dl>
+    <dt>Why</dt><dd>Emails, complaints and web pages are untrusted text. With fixed schemas and control flow chosen by code, injected text can at worst corrupt a field, not call a tool.</dd>
+    <dt>Instead of</dt><dd>A ReAct-style agent choosing its own tools.</dd>
+    <dt>The cost</dt><dd>Less flexible: every new capability is a code change.</dd>
+  </dl>
+</article></div>
+      </section>
+
+      <section aria-labelledby="hard-h">
+        <h2 id="hard-h">The hard parts</h2>
+        <ul class="hard"><li><h3>Encoding a messy human procedure faithfully</h3><p>The procedure has domain traps. &quot;CA&quot; in a lane means Canada, not California, so lane checks use province codes. Only certain inspection levels count toward some checks, and authority-age thresholds vary by equipment. Each became a rule with a clause reference and a fixture pair, plus a shared glossary so engineers and the vetting team use the same words.</p></li>
+<li><h3>Durable human steps under a hard time cap</h3><p>A manager may answer hours later, but machine time must stay bounded. I separated the two clocks: the deadline lives in the graph state and covers machine work, human waits are interrupts that sit outside the budget, and a job timeout acts as the outer guard.</p></li>
+<li><h3>A phone check that can&#x27;t be gamed</h3><p>The agent never holds the values it is checking. Answers are normalised per field type (phone digits, identifiers reduced to uppercase letters and numbers, parsed dates and amounts) before comparison, consent handling depends on the call&#x27;s region, and the transcript plus the comparison become evidence.</p></li>
+<li><h3>Being honest about the gaps</h3><p>While writing the engineering docs I read every module against the procedure and the API contract, and logged each place the code didn&#x27;t yet match the design, ranked by severity with a fix order. Today the carrier-approval and exception workflows run end to end offline, while the other three are built but not yet started through the API. Most gaps hid because each workflow&#x27;s tests bypassed the shared runner.</p></li></ul>
+      </section>
+
+      <section aria-labelledby="next-h">
+        <h2 id="next-h">What I'd do next</h2>
+        <ul class="ticks ticks--plain"><li>Run every workflow through the shared runner in tests and unify the state contract, so all five workflows start end to end through the API.</li>
+<li>Wire in the durable Postgres checkpointer so waiting runs survive restarts.</li>
+<li>Persist each workflow&#x27;s domain records and connect the live platform integrations.</li>
+<li>An agreement dashboard comparing shadow-mode verdicts with the team&#x27;s decisions, which is the metric that justifies moving a tenant from shadow to auto.</li></ul>
+      </section>
+
+      <blockquote class="takeaway">
+        <p class="kicker">What I took away</p>
+        <p>Put the LLM where its mistakes are cheap and keep it structurally away from where they are expensive. A minimum over an ordered set of verdicts did more for safety than any prompt wording could have. I would also write the end-to-end contract test on day one: most of my integration gaps hid because each piece was only ever tested alone.</p>
+      </blockquote>
+    </div>
+
+    <aside class="case-side">
+      <dl class="facts">
+        <dt>Role</dt><dd>Sole engineer: design, backend, agents, voice agent, console</dd>
+        <dt>Context</dt><dd>Client project for a US freight brokerage&#x27;s carrier-vetting team</dd>
+        <dt>Status</dt><dd>Prototype</dd>
+        <dt>Stack</dt><dd>Python, FastAPI, LangGraph, OpenAI, Cartesia, PostgreSQL, Redis, Playwright, Langfuse, React + TypeScript</dd>
+      </dl>
+      <nav class="toc" aria-label="On this page">
+        <p class="kicker">On this page</p>
+        <ul>
+          <li><a href="#problem-h">The problem</a></li>
+          <li><a href="#approach-h">How I thought about it</a></li>
+          <li><a href="#built-h">What I built</a></li>
+          <li><a href="#arch-h">Architecture</a></li>
+          <li><a href="#flow-h">Key flow</a></li>
+          <li><a href="#dec-h">Decisions</a></li>
+          <li><a href="#hard-h">Hard parts</a></li>
+        </ul>
+      </nav>
+    </aside>
+  </div>
+
+  <nav class="wrap pager" aria-label="More projects">
+    <a class="prev" href="freightsense.html"><span>Previous</span>One processing spine for every freight back-office check</a><a class="next" href="check-reader.html"><span>Next</span>Reading bank details off a check without keeping them</a>
+  </nav>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <p class="logo">Kartikey Shaurya</p>
+      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="../index.html">Front page</a></li>
+        <li><a href="../projects/index.html">All projects</a></li>
+        <li><a href="../index.html#experience">Experience</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Elsewhere</h4>
+      <ul>
+        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+      </ul>
+    </div>
+    <p class="fine">
+      <span>© 2026 Kartikey Shaurya</span>
+      <span>Most client names and internal details are withheld. Architecture is shown at the component level.</span>
+    </p>
+  </div>
+</footer>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: "strict",
+    theme: "base",
+    flowchart: { curve: "basis", htmlLabels: true },
+    themeVariables: {
+      fontFamily: "Schibsted Grotesk, Helvetica Neue, Arial, sans-serif",
+      fontSize: "15px",
+      background: "#faedda",
+      primaryColor: "#fffdf9",
+      primaryBorderColor: "#1c1a17",
+      primaryTextColor: "#1c1a17",
+      lineColor: "#a51c30",
+      secondaryColor: "#faedda",
+      tertiaryColor: "#fffbf4",
+      clusterBkg: "#fffbf4",
+      clusterBorder: "#b9b8ad",
+      edgeLabelBackground: "#faedda"
+    }
+  });
+</script>
+</body>
+</html>

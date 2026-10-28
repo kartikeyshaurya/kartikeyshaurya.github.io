@@ -1,0 +1,142 @@
+{
+  "slug": "brain-response-studio",
+  "theme": "ml",
+  "order": 4,
+  "title": "Brain Response Studio",
+  "headline": "Drop in a clip, watch a predicted brain respond",
+  "dek": "A local studio around Meta's open TRIBE v2 research model. The model is Meta's; I built the serving system that runs it on one consumer GPU and the 3D visualisation that makes its output readable for people who aren't neuroscientists.",
+  "summary": "A serving system and 3D cortex viewer for Meta's TRIBE v2 brain-response model, on one GPU.",
+  "client": "Internal R&D tool",
+  "role": "Sole engineer: model serving, media pipeline, API, 3D visualisation (the TRIBE v2 model is Meta's)",
+  "status": "Working prototype, runs locally",
+  "stack": [
+    "Python",
+    "FastAPI",
+    "PyTorch",
+    "Meta TRIBE v2 (with V-JEPA 2, Wav2Vec-BERT, LLaMA 3.2)",
+    "PostgreSQL",
+    "ffmpeg",
+    "nilearn",
+    "React and TypeScript",
+    "three.js"
+  ],
+  "problem": [
+    "Meta FAIR released TRIBE v2, a research model that predicts fMRI brain activity at about twenty thousand points on the cortex, one frame per second, from video, audio or text. It is released for non-commercial use and ships as a Python library with no product around it. Running it means a gated model download, chaining several large foundation models, tuning GPU memory, and writing NumPy code to make sense of a matrix with twenty thousand columns.",
+    "The people who wanted to use it were colleagues and researchers curious about what the model predicts for a piece of content, such as an ad, a clip or a sentence, without writing any Python. Most of them are not neuroscientists. The constraints were one machine, an 8 GB consumer GPU at best, often no GPU at all on developer laptops, and inputs the model doesn't accept natively, such as photos and GIFs."
+  ],
+  "approach": [
+    "The first constraint was memory. TRIBE v2 chains V-JEPA 2 for video, Wav2Vec-BERT for audio, LLaMA 3.2 for text and WhisperX for transcription, and the video encoder alone didn't fit on an 8 GB GPU at full precision. I didn't want to fork a research library that is still changing, or require bigger hardware, so I applied a few small, documented runtime patches when the model loads: half precision for the video encoder, equal-length windows for long audio so attention memory stays bounded, and reuse of the encoder output when consecutive frames are the same. Each patch is narrow and can be switched off on its own.",
+    "The same constraint decided the serving design. The GPU can hold one pipeline at a time, so concurrency would only cause out-of-memory errors. I used <b>a single background worker that runs one job at a time</b>, and made the database the source of truth, so a crash or restart re-queues anything unfinished instead of losing it. Unsupported inputs are converted at the edge: photos and GIFs become short videos, and text and captions become speech with word timings I generate myself. That way the model path never changes.",
+    "The second half of the problem was making the output readable. A run is a large float matrix, so I send it to the browser as raw binary instead of JSON and recolour a three.js cortex mesh in place as the video plays. On top of that I added layers of meaning: per-region averages from a standard brain atlas, and a plain-language grouping into everyday systems like seeing, hearing and understanding words. The technical names stay visible, and the interface says clearly that this is a model's prediction and a simplification, not a medical test.",
+    "I also made mock mode a first-class feature, because most development machines have no GPU. It produces smooth, realistic-looking synthetic activity so the whole interface can be built and tested anywhere, and every mock run is recorded and labelled as synthetic so it can't be mistaken for a real prediction."
+  ],
+  "built": [
+    "A job-based API that accepts video, audio, text, photos and GIFs, streams uploads to disk with a size cap, and returns immediately while the work runs in the background.",
+    "A single GPU worker that survives restarts, frees GPU memory after every run including failed ones, and records plain-language hints for common failures.",
+    "Small runtime patches that let Meta's TRIBE v2 pipeline run on an 8 GB GPU without forking the library.",
+    "A media pipeline that turns photos and GIFs into video and turns text and captions into speech with generated word timings, which also skips a slow transcription step.",
+    "A three.js cortex viewer that recolours the brain mesh every second in sync with the uploaded media, with camera presets and an activity threshold.",
+    "Region analysis: a ranked list of the most active regions at any moment and time-series charts for regions the user pins.",
+    "A plain-language summary that groups regions into everyday brain systems with simple activity levels.",
+    "A mock mode with clearly labelled synthetic output, so the full app runs on machines with no GPU or model access."
+  ],
+  "architecture": {
+    "mermaid": "flowchart LR\n  A[\"Browser<br/>React and three.js\"] --> B[\"API<br/>uploads and runs\"]\n  B --> C[\"Media conversion<br/>photo or GIF to video,<br/>text to speech\"]\n  B --> D[\"Run database<br/>status and summaries\"]\n  B --> E[\"Job queue\"]\n  E --> F[\"GPU worker<br/>one run at a time\"]\n  F --> G[\"TRIBE v2 (Meta)<br/>V-JEPA 2, Wav2Vec-BERT,<br/>LLaMA 3.2\"]\n  F --> H[\"Prediction files<br/>raw float matrix\"]\n  F --> D\n  B --> I[\"Brain mesh<br/>and atlas\"]\n  H --> B",
+    "caption": "Meta's model sits behind a single GPU worker, and everything around it handles inputs, durable job state and getting a large prediction matrix into the browser.",
+    "components": [
+      {
+        "name": "API",
+        "desc": "Validates and stores uploads, creates runs, and serves run details, raw predictions, the original media and the brain mesh."
+      },
+      {
+        "name": "Media conversion",
+        "desc": "Turns photos and GIFs into short videos and text into speech with word timings, so every input reaches the model in a form it accepts."
+      },
+      {
+        "name": "GPU worker",
+        "desc": "Runs one prediction at a time, saves the result and summaries, re-queues unfinished runs after a restart and always frees GPU memory."
+      },
+      {
+        "name": "TRIBE v2 (Meta)",
+        "desc": "Meta FAIR's research model, which predicts cortical activity from video, audio and text features, wrapped with small memory patches."
+      },
+      {
+        "name": "Split storage",
+        "desc": "Small summaries live in the database for lists and charts, while the full prediction matrix lives in a file on disk."
+      },
+      {
+        "name": "Cortex viewer",
+        "desc": "A three.js brain mesh recoloured per second, with region rankings, pinned charts and a plain-language summary."
+      }
+    ]
+  },
+  "flow": {
+    "title": "What happens to an uploaded video",
+    "steps": [
+      "The user drops a file in the browser. The API checks its type, streams it to disk with a size cap, and converts a photo or GIF to video.",
+      "A run record is created as queued and the API returns straight away. The interface polls for status and shows the queue and the elapsed time.",
+      "The GPU worker picks up the run, marks it as running and passes the input to Meta's TRIBE v2 model.",
+      "The model returns a predicted activity value for every point on the cortex, for every second of input.",
+      "The worker saves the raw matrix to disk, computes small summaries such as per-region averages, and marks the run done. On a failure it records a hint and still frees the GPU.",
+      "The browser fetches the predictions as raw binary and loads them straight into a typed array with no parsing.",
+      "As the video plays, the viewer recolours the cortex for the current second, and the region list and plain-language summary update with it."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "One background worker, with the database as the source of truth",
+      "why": "The GPU can hold one pipeline at a time, so parallel workers would only fight over memory. A worker inside the API process keeps setup to a database and a web server.",
+      "alternative": "A separate task queue with Redis, or a separate worker process.",
+      "tradeoff": "There is no horizontal scaling and the queue lives in memory. I covered the durability gap by re-queuing unfinished runs from the database on startup."
+    },
+    {
+      "decision": "Runtime patches to the model library instead of a fork",
+      "why": "Half precision for the video encoder, bounded audio windows and reuse of repeated frames were enough to fit an 8 GB GPU without maintaining a fork of a moving research codebase.",
+      "alternative": "Forking the library, or requiring a bigger GPU.",
+      "tradeoff": "Patches are fragile to upstream changes. I kept each one small, idempotent, documented and switchable, so a break would be loud and easy to find."
+    },
+    {
+      "decision": "Send predictions as raw binary, not JSON",
+      "why": "Twenty thousand floats per frame as JSON is several times larger and slow to parse. Raw bytes go straight into a typed array and then into the colour buffer.",
+      "alternative": "JSON arrays, or streaming one frame at a time.",
+      "tradeoff": "It is a custom contract, and the whole run loads at once, which is fine for clips a few minutes long."
+    },
+    {
+      "decision": "Convert unsupported inputs at upload time",
+      "why": "The model reads only video, audio and text. Converting at the edge keeps the worker and the model path unchanged.",
+      "alternative": "Rejecting photos, or adding a custom image path to the model.",
+      "tradeoff": "A still photo becomes a few seconds of video, which only approximates how people look at a photo."
+    },
+    {
+      "decision": "Generate my own word timings instead of running transcription",
+      "why": "For text and captions I already know the words. Synthesising speech in short pieces and spreading timings by word length skips a slow transcription step, and avoids a built-in text path that misdetected the language of short English text.",
+      "alternative": "Letting the model's pipeline transcribe the generated speech, or using its own text path.",
+      "tradeoff": "The timings are estimated rather than measured, though they sit well within the model's one-second time step."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "Fitting a multi-model pipeline on an 8 GB GPU",
+      "body": "The video encoder at full precision was larger than the whole GPU. I cast it to half precision at load time and cast its inputs to match, set extractor batch sizes to the minimum, and made each extractor's device configurable, with CPU as a slow fallback."
+    },
+    {
+      "title": "Out-of-memory errors on long audio",
+      "body": "The audio model's attention memory grows with the square of the input length, so a clip of about a minute ran out of memory. I split audio into equal windows of bounded length, equal so there's no tiny last piece, and joined the outputs, which matches how the model already handles long audio."
+    },
+    {
+      "title": "GPU memory leaking after failed runs",
+      "body": "The library unloaded its models after a successful run but not after a failure, and the exception itself kept tensors alive. The worker now unloads every extractor, clears caches and drops the traceback's references before reporting the error, so one bad run doesn't break the next one."
+    },
+    {
+      "title": "Photos running as slowly as real videos",
+      "body": "A photo becomes many identical clips, and reusing the encoder output should have made it fast, but exact frame comparison never matched because video compression adds tiny noise. For still inputs only, I switched to a tolerant comparison; real videos still need an exact match so no motion is ever mistaken for a repeat."
+    }
+  ],
+  "next": [
+    "A separate worker process with a durable queue, cancellation and progress reporting for each pipeline stage.",
+    "Push status updates to the browser instead of polling.",
+    "Cache results by content so the same clip never runs twice, and compare two runs side by side.",
+    "Package the GPU backend in a container so setup is one step instead of several manual ones."
+  ],
+  "lesson": "Wrapping a research model is mostly about respecting its constraints and then hiding them from the user. The GPU's memory limit set the serving design, and the size of the output set the transfer format. The part I'd carry forward is the translation layer: a twenty-thousand-column matrix only becomes useful when someone without a neuroscience background can read it, and when synthetic data and simplifications are labelled honestly."
+}

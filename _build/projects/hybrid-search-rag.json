@@ -1,0 +1,142 @@
+{
+  "slug": "hybrid-search-rag",
+  "theme": "ml",
+  "order": 3,
+  "title": "Hybrid Search RAG",
+  "headline": "A document chatbot that would rather say it doesn't know",
+  "dek": "Built with a colleague: a document Q&A service that combines keyword and semantic search, checks what it retrieves before answering, and ships as a metered API with an admin portal.",
+  "summary": "Document Q&A that fuses BM25 and vector search, grades retrieved chunks, and ships as a metered API.",
+  "client": "Built with a colleague",
+  "role": "Co-developer, built with a colleague: retrieval, RAG workflow, API and admin portal",
+  "status": "Production-style MVP",
+  "stack": [
+    "Python",
+    "FastAPI",
+    "LangGraph",
+    "Qdrant",
+    "BM25 (FastEmbed)",
+    "OpenAI embeddings and GPT-4o mini",
+    "PostgreSQL",
+    "Redis",
+    "React and Ant Design",
+    "Docker Compose"
+  ],
+  "problem": [
+    "Teams have internal documents (PDFs, Markdown, text files) and want a chatbot that answers from them without making things up. Two failures come up again and again. Dense vector search misses exact terms like product codes, acronyms and error strings. And a model handed loosely related passages will answer confidently anyway.",
+    "The users were integrators calling the service from their own apps and backends, and admins who upload documents, issue keys and watch usage. For both groups the API was the product. The chat page we shipped is a test console, not the end-user interface."
+  ],
+  "approach": [
+    "We started from the two failure modes and treated them as separate problems. For retrieval misses, we ran keyword and semantic search together: dense embeddings for paraphrase, BM25 sparse vectors for exact tokens. The real question was how to merge them. A weighted sum of scores needs normalisation and a tuned weight per corpus, because cosine similarity and BM25 scores live on different scales. <b>Reciprocal Rank Fusion</b> combines the lists by rank instead, so it needs no tuning. Qdrant can store both vectors on the same point and fuse them on the server, which gave us hybrid search in one query and one datastore instead of running a separate search engine.",
+    "For confident wrong answers, we found that the root cause was structural: top-k retrieval always returns something, even for an off-topic question. So we changed the shape of the pipeline instead of tweaking the prompt. A LangGraph state machine retrieves, has the LLM grade every chunk for relevance in one batched, structured call, and then branches. If anything relevant survives, it answers from that context only and cites its sources. If nothing survives, it returns a fixed \"I don't have this information\" reply.",
+    "The principle we settled on was that <b>the decision to answer belongs to the graph, not the model</b>, and the model only works from evidence that passed a check. Around that we built the product side: hashed, rate-limited and quota-metered API keys for integrators, and an admin portal for documents, keys and usage. One shared answer function serves the API, the command line and ingestion, so those paths can't drift apart."
+  ],
+  "built": [
+    "Hybrid retrieval in Qdrant: dense OpenAI embeddings and local BM25 sparse vectors on the same point, fused with Reciprocal Rank Fusion in a single query.",
+    "A LangGraph workflow that retrieves, grades, and then either answers with citations or falls back to a fixed reply.",
+    "Batched relevance grading with a typed yes or no per chunk, so grading several chunks costs roughly one round trip instead of one per chunk.",
+    "An ingestion pipeline for PDF, Markdown and text that chunks with overlap, embeds each chunk both ways and keeps source and page details for citations.",
+    "Metered API keys that are stored only as hashes and shown once, with rotation, revocation, per-minute rate limits and monthly quotas.",
+    "A React admin portal for consumers, keys, document upload and deletion, and usage analytics charts.",
+    "Document deletion that also removes the document's vectors, so a withdrawn file stops answering questions.",
+    "A single-container deployment where only the API is exposed and the datastores stay on an internal network."
+  ],
+  "architecture": {
+    "mermaid": "flowchart LR\n  A[\"Integrator app\"] --> C[\"Chat API<br/>key check, rate limit, quota\"]\n  B[\"Admin portal\"] --> D[\"Admin API<br/>documents, keys, usage\"]\n  C --> E[\"LangGraph workflow<br/>retrieve, grade, answer\"]\n  E --> F[\"Qdrant<br/>dense and BM25 vectors\"]\n  E --> G[\"LLM<br/>grading and generation\"]\n  D --> H[\"Ingestion<br/>chunk and embed\"]\n  H --> F\n  C --> I[\"Counters<br/>Redis\"]\n  C --> J[\"Accounts and usage logs<br/>PostgreSQL\"]\n  D --> J",
+    "caption": "Two entry points share one backend: integrators reach the RAG workflow through metered keys, and admins manage the corpus and the keys through the portal.",
+    "components": [
+      {
+        "name": "Hybrid vector store",
+        "desc": "Qdrant holds a dense and a sparse vector for every chunk and fuses the two result lists on the server."
+      },
+      {
+        "name": "RAG workflow",
+        "desc": "A small LangGraph state machine that retrieves, grades and then branches to an answer or a fixed fallback."
+      },
+      {
+        "name": "Relevance grader",
+        "desc": "One batched LLM call with structured output that keeps only the chunks that actually relate to the question."
+      },
+      {
+        "name": "Metering layer",
+        "desc": "Checks each API key, applies per-minute and monthly limits, and logs every request for analytics."
+      },
+      {
+        "name": "Ingestion",
+        "desc": "Turns uploaded documents into overlapping chunks with both embeddings and the source details needed for citations."
+      },
+      {
+        "name": "Admin portal",
+        "desc": "A React app for managing consumers, keys and documents and for viewing usage over time."
+      }
+    ]
+  },
+  "flow": {
+    "title": "What happens to a question",
+    "steps": [
+      "An integrator sends a question with an API key. The service hashes the key, looks it up and checks that the key and its owner are active.",
+      "The per-minute rate limit and the monthly quota are checked. Over either limit, the caller gets a clear rejection with a hint about when to retry.",
+      "The question is embedded, and Qdrant runs dense and BM25 search together and returns the top fused chunks.",
+      "The LLM grades every retrieved chunk for relevance in one batched call, and unrelated chunks are dropped.",
+      "If any chunks survive, the model answers from that context only and cites the source files and pages.",
+      "If none survive, the graph returns a fixed \"I don't have this information\" reply instead of letting the model improvise.",
+      "The request is logged for usage analytics without adding to response time, and failed requests are logged as well."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "Hybrid retrieval fused with Reciprocal Rank Fusion inside Qdrant",
+      "why": "Dense vectors handle paraphrase and BM25 handles exact tokens. Fusing by rank avoids calibrating two incompatible score scales, and doing it on the server means one round trip and one datastore.",
+      "alternative": "Dense-only search, or a separate keyword search engine plus a vector database with fusion in the application.",
+      "tradeoff": "We accept a fixed fusion with no tuned weighting. Two stores would allow tuning but double the operational work."
+    },
+    {
+      "decision": "A relevance-grading step before generation",
+      "why": "Top-k retrieval always returns something. Grading lets the graph route to a deterministic fallback instead of letting the model improvise from weak context. The grader is deliberately lenient: it drops clearly unrelated chunks rather than reranking.",
+      "alternative": "A similarity-score cut-off, or a cross-encoder reranker.",
+      "tradeoff": "It adds one extra LLM round per question, which we kept small by grading all chunks concurrently. A cross-encoder would be cheaper per call but is another model to host."
+    },
+    {
+      "decision": "A LangGraph state machine instead of a linear chain",
+      "why": "The pipeline has a real branch, and an explicit graph with typed state makes it easy to add nodes later, such as query rewriting or a retry when nothing relevant comes back.",
+      "alternative": "A plain chain with an if statement.",
+      "tradeoff": "It is a little more machinery than four steps strictly need, in exchange for cheap extension later."
+    },
+    {
+      "decision": "One shared answer function for every entry point",
+      "why": "The API, the command line and the ingestion routes all call the same function, so their behaviour can't drift apart.",
+      "alternative": "A separate code path per interface.",
+      "tradeoff": "That one module becomes critical, so changes to it need care."
+    },
+    {
+      "decision": "A fast hash for API keys and a slow one for passwords",
+      "why": "Keys are long random values, so a fast hash is safe and allows a direct indexed lookup on every request. Human passwords are low-entropy and need a deliberately slow hash.",
+      "alternative": "The same slow password hash for keys too.",
+      "tradeoff": "A slow hash on every chat request would add CPU time per call and rule out indexed lookups, so the split is worth the extra rule to remember."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "Staying grounded when retrieval always returns results",
+      "body": "Top-k search never comes back empty, so the model always had something to riff on. The fix was structural: an explicit grading step and a branch to a fixed fallback, combined with a generation prompt that says to use only the given context and cite it."
+    },
+    {
+      "title": "Grading latency growing with the number of chunks",
+      "body": "Grading chunks one at a time meant one LLM call after another. We switched to a single batched call with structured output, which runs the grades concurrently and returns a typed yes or no, so there is no free text to parse."
+    },
+    {
+      "title": "Usage rows missing when requests failed",
+      "body": "Errors weren't showing up in analytics, because the web framework drops background tasks when a handler raises. Failed requests now log inline before the error is returned, and the logger swallows its own errors so it can never break a chat request."
+    },
+    {
+      "title": "Making document deletion actually forget",
+      "body": "Deleting a file left its chunks in the vector store, still answering questions. Deletion now also removes every vector tagged with that document's source, which works because ingestion normalises the source name consistently."
+    }
+  ],
+  "next": [
+    "Conversation memory, with a query-rewrite step that turns follow-up questions into standalone ones.",
+    "A corrective retry loop that rewrites the query once and retrieves again before falling back.",
+    "An evaluation set with known source passages, to measure recall and faithfulness for dense, sparse and hybrid search and to tune chunk size and top-k from data.",
+    "Idempotent background ingestion and separate corpora per tenant."
+  ],
+  "lesson": "When a model misbehaves, look for the structural cause before reaching for the prompt. Retrieval that always returns something will always give the model something to improvise from, and the fix was a branch in the graph, not better wording. I'd carry that into the next system: put the decision to answer in code, and let the model work only on evidence that passed a check."
+}

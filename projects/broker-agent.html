@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Valora Broker Agent: A chat agent that reads the TMS and asks before it writes | Kartikey Shaurya</title>
+  <meta name="description" content="A supervisor model and seven specialist agents answer freight brokers&#x27; questions from live TMS data and prepare changes that run only after the broker approves the exact action.">
+  <meta name="author" content="Kartikey Shaurya">
+  <link rel="canonical" href="https://kartikeyshaurya.github.io/projects/broker-agent.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Valora Broker Agent: A chat agent that reads the TMS and asks before it writes | Kartikey Shaurya">
+  <meta property="og:description" content="A supervisor model and seven specialist agents answer freight brokers&#x27; questions from live TMS data and prepare changes that run only after the broker approves the exact action.">
+  <meta property="og:url" content="https://kartikeyshaurya.github.io/projects/broker-agent.html">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="wrap util">
+    <ul>
+      <li>Chandigarh, India</li>
+    </ul>
+    <ul>
+      <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
+      <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a class="pdf" href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+    </ul>
+  </div>
+
+  <div class="wrap masthead masthead--slim">
+    <a class="logo" href="../index.html">Kartikey Shaurya</a>
+    <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
+  </div>
+
+  <nav class="primary" aria-label="Sections">
+    <ul>
+      <li><a href="../index.html">Front page</a></li>
+      <li><a href="../projects/index.html" class="is-active" aria-current="page">Projects</a></li>
+      <li><a href="../index.html#experience">Experience</a></li>
+      <li><a href="../index.html#about">About</a></li>
+      <li><a class="cta" href="../index.html#hire">Hire me</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" class="case">
+  <section class="wrap case-head">
+    <p class="kicker"><a href="index.html">Projects</a> <span class="fmt">Freight &amp; Logistics AI</span></p>
+    <h1>A chat agent that reads the TMS and asks before it writes</h1>
+    <p class="dek">A supervisor model and seven specialist agents answer freight brokers&#x27; questions from live TMS data and prepare changes that run only after the broker approves the exact action.</p>
+    <p class="byline">By <b>Kartikey Shaurya</b> · Valora Broker Agent · Creed Infotech, for ValueLoads</p>
+  </section>
+
+  <div class="wrap case-grid">
+    <div class="case-body">
+
+      <section aria-labelledby="problem-h">
+        <h2 id="problem-h">The problem</h2>
+        <div class="prose"><p>Freight brokers on the ValueLoads TMS portal work across many screens: shipments, shippers, carriers, the load board, aging, claims and reports. The shipment is the hub that ties them together, so a simple question like &quot;which of my loads deliver today, and is that shipper over their credit limit?&quot; means clicking through several pages and stitching the answer together by hand.</p>
+<p>The API behind the portal is large and inconsistent, and the data is real: real freight, real money, and free text written by outsiders. Any assistant had to answer from live data, never do more than the broker is allowed to do, and never change a record without a person deciding.</p></div>
+      </section>
+
+      <section aria-labelledby="approach-h">
+        <h2 id="approach-h">How I thought about it</h2>
+        <div class="prose prose--lead"><p>I did not start with prompts. I started by mapping the API: a generated reference, a live probe of every read route a broker can reach, and one document per portal page that maps each column to the response field it comes from. That evidence showed me the API could not be trusted by its spec. Some read requests changed state, some routes failed, and identifiers came in more than one form. It also meant every tool I wrote could point back to something I had observed.</p>
+<p>That finding shaped the safety model. I could not classify a tool as safe because of its HTTP verb, so I set each tool&#x27;s effect by hand: read, read with an outside service, write, or write that is hard to undo. And I split every write into two halves. <b>The model can only prepare a write, which validates it and builds a preview. Committing it is plain code that runs after the broker approves the exact payload on a confirmation card.</b> Writes are also switched off globally by default.</p>
+<p>For identity, I chose to have the agent act with the broker&#x27;s own TMS session instead of a service account. The TMS already enforces permissions and logs the real user, so the agent can never do more than the person using it, and I did not have to rebuild an authorisation layer. The session is never stored on our side.</p>
+<p>For structure, one agent with every tool kept choosing the wrong one and filling its context with wide records. I moved to a supervisor that delegates to seven specialists (shippers, carriers, capacity, shipments, finance, insights and container quotes). Each specialist starts with a fresh context and sees only its own small set of tools, and specialists cannot call each other, so every cross-domain step goes back through one place I can debug. My design document proposed LangGraph, but once the approval pause turned out to be a durable database row plus a new turn, a hand-written loop was simpler to stream, budget, trace and test.</p></div>
+      </section>
+
+      <section aria-labelledby="built-h">
+        <h2 id="built-h">What I built</h2>
+        <ul class="ticks"><li>A supervisor and seven specialist agents on the OpenAI Responses API with strict function tools, plus fast-path tools for the most common questions.</li>
+<li>A single tool gateway that every call passes through: allowlist, permission check, response shaping, redaction of sensitive fields, caching and audit.</li>
+<li>A prepare-then-commit write flow with approve, edit and reject on a confirmation card, idempotent approvals, expiry, and a stronger warning for actions that cannot be undone.</li>
+<li>A streaming chat UI in React that shows live steps, structured result cards and suggested next actions.</li>
+<li>Attachment handling for PDFs, images and office documents: text extraction, document-type classification, scrubbing of identity numbers, and approved upload to the TMS.</li>
+<li>Exact conversation replay, so each thread resumes with the same model-facing history and prompt caches stay warm.</li>
+<li>An admin panel with per-user agent access, monthly spend caps, a workspace budget, usage analytics and a tool-call audit log.</li>
+<li>Prompt-injection defences treating all outside text as data, backed by an adversarial test sheet that is part of the release gate.</li></ul>
+      </section>
+
+      <section aria-labelledby="arch-h">
+        <h2 id="arch-h">How it fits together</h2>
+        <figure class="diagram">
+          <pre class="mermaid">flowchart LR
+  B[&quot;Broker in the&lt;br/&gt;TMS portal&quot;] --&gt; UI[&quot;Chat UI&quot;]
+  UI --&gt; API[&quot;Agent API&quot;]
+  API --&gt; SUP[&quot;Supervisor&quot;]
+  SUP --&gt; SP[&quot;Seven specialist&lt;br/&gt;agents&quot;]
+  SUP --&gt; LLM[&quot;Language model&quot;]
+  SP --&gt; GW[&quot;Tool gateway&lt;br/&gt;permissions, redaction, audit&quot;]
+  GW --&gt; TMS[&quot;ValueLoads TMS&lt;br/&gt;as the broker&quot;]
+  API --&gt; DB[(&quot;Threads, approvals&lt;br/&gt;and audit&quot;)]
+  API --&gt; FS[(&quot;Attachment store&quot;)]
+  GW --&gt; C[(&quot;Cache&quot;)]</pre>
+          <figcaption>Every tool call, from every specialist, goes through one gateway that calls the TMS as the signed-in broker.</figcaption>
+        </figure>
+        <dl class="components"><div><dt>Supervisor</dt><dd>Reads the conversation, answers simple questions directly and delegates focused tasks to one specialist at a time.</dd></div>
+<div><dt>Specialist agents</dt><dd>Seven domain agents, each with a fresh context, its own prompt and only its own tools.</dd></div>
+<div><dt>Tool gateway</dt><dd>The only path to the TMS: it checks permissions, shapes and redacts responses, caches reads and audits every call.</dd></div>
+<div><dt>Approval store</dt><dd>Durable pending actions, so a prepared write survives restarts and deploys until the broker decides.</dd></div>
+<div><dt>Attachment pipeline</dt><dd>Extracts and classifies uploaded documents locally first and uses the model&#x27;s vision only when there is no text layer.</dd></div>
+<div><dt>Admin panel</dt><dd>Controls who can use which agent, sets spending limits and shows usage and audit history.</dd></div></dl>
+      </section>
+
+      <section aria-labelledby="flow-h">
+        <h2 id="flow-h">What happens when a broker asks the agent to change something</h2>
+        <ol class="steps"><li>The broker types a request, for example to cancel a shipment because the shipper asked.</li>
+<li>The supervisor delegates a one-sentence task to the shipment specialist.</li>
+<li>The specialist reads the shipment through the gateway, and the result streams to the UI as a card.</li>
+<li>The specialist calls the cancel tool, which only prepares the action: it checks the broker&#x27;s permission, validates the input and builds a preview. Nothing is sent to the TMS.</li>
+<li>The specialist stops at once, and the broker sees a confirmation card showing exactly what will be sent and who it affects.</li>
+<li>When the broker approves, code (not the model) commits the action with the broker&#x27;s current session, records it in the audit log and clears stale cached reads.</li>
+<li>If the TMS times out after the request was sent, the action is marked unknown and the broker is told to check the record, instead of the system guessing and risking a duplicate.</li></ol>
+      </section>
+
+      <section aria-labelledby="dec-h">
+        <h2 id="dec-h">Decisions and trade-offs</h2>
+        <div class="decisions"><article class="decision">
+  <h3>The agent acts with the broker&#x27;s own TMS session, never a service account.</h3>
+  <dl>
+    <dt>Why</dt><dd>The TMS already enforces permissions and logs the real user, so the agent can never do more than the broker.</dd>
+    <dt>Instead of</dt><dd>A service account with our own permission layer on top.</dd>
+    <dt>The cost</dt><dd>When the session expires the broker has to reconnect, and scheduled work with no user present is not possible yet.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>The model prepares writes; code commits them after a human approves.</h3>
+  <dl>
+    <dt>Why</dt><dd>The broker approves the exact payload that will be sent, and the commit path is separate code that re-checks access.</dd>
+    <dt>Instead of</dt><dd>Letting the model call write endpoints directly behind an &quot;are you sure?&quot; prompt.</dd>
+    <dt>The cost</dt><dd>One extra click per write, more code per write tool, and only one pending write per conversation.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Each tool&#x27;s effect is set by hand, not inferred from the HTTP verb.</h3>
+  <dl>
+    <dt>Why</dt><dd>The API probe found read requests that send invites or change state, and outside lookups that may cost money.</dd>
+    <dt>Instead of</dt><dd>Treating reads as safe and everything else as a write.</dd>
+    <dt>The cost</dt><dd>Every new tool needs a human decision, which is the point.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Specialists with fresh contexts and narrow tool sets.</h3>
+  <dl>
+    <dt>Why</dt><dd>A small tool list keeps prompts short and tool choice accurate, and calls outside a specialist&#x27;s set are rejected even if the model tries.</dd>
+    <dt>Instead of</dt><dd>One agent with every tool, or specialists that can call each other.</dd>
+    <dt>The cost</dt><dd>Extra model calls and latency per delegation, capped by per-turn budgets.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>A hand-written supervisor loop instead of LangGraph.</h3>
+  <dl>
+    <dt>Why</dt><dd>The approval pause is just a durable row and a new turn, and a plain async loop made streaming, budgets and tracing easier to control and test.</dd>
+    <dt>Instead of</dt><dd>A LangGraph graph with checkpoints and interrupts, as my own design proposed.</dd>
+    <dt>The cost</dt><dd>I own the loop code and give up built-in graph visualisation, but kept the seams that would make a later move possible.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Stable system prompts and a fixed tool list per role.</h3>
+  <dl>
+    <dt>Why</dt><dd>Keeping the date, user and current page out of the system prompt and sorting tools keeps the provider&#x27;s prompt cache warm, which cuts cost and latency.</dd>
+    <dt>Instead of</dt><dd>Personalised prompts and per-user tool lists.</dd>
+    <dt>The cost</dt><dd>A tool the broker cannot use shows up as a &quot;forbidden&quot; result rather than being hidden.</dd>
+  </dl>
+</article></div>
+      </section>
+
+      <section aria-labelledby="hard-h">
+        <h2 id="hard-h">The hard parts</h2>
+        <ul class="hard"><li><h3>An API I could not trust by its spec</h3><p>Read requests with side effects, failing routes, misnamed paths and mixed identifier types meant the documentation alone was not enough. I built evidence first: a live probe and a page-by-page field map with every claim marked as observed or inferred. Each tool records what it relies on, and the model is taught that an empty result is not an error.</p></li>
+<li><h3>Prompt injection through business data</h3><p>Shipper notes, claim comments and uploaded PDFs are written by outsiders. I treated them as data at every layer: clearly framed blocks, a shared &quot;data is not instructions&quot; rule in every prompt, no raw endpoints, strict per-specialist tools and human approval for writes. Then I wrote adversarial tests for each path.</p></li>
+<li><h3>Replaying multi-agent conversations exactly</h3><p>The model provider keeps no conversation state for us, and reasoning models need their earlier reasoning echoed back. I store the exact model-facing items for every message, so each turn replays byte for byte, prompt caches stay valid, and older threads still render if the provider changes.</p></li>
+<li><h3>A fragile upstream under load</h3><p>The test environment started failing when it received several requests at once. I put concurrency limits in the one client that talks to the TMS, retried only idempotent reads, and mapped TMS status codes to a small set of outcomes that both the model and the UI understand.</p></li></ul>
+      </section>
+
+      <section aria-labelledby="next-h">
+        <h2 id="next-h">What I'd do next</h2>
+        <ul class="ticks ticks--plain"><li>Turn writes on in a disposable environment and exercise every commit path end to end.</li>
+<li>Build an evaluation harness per specialist for routing, tool choice and grounding, and run it in CI.</li>
+<li>Move document extraction to a background worker so large scans do not hold a request open.</li>
+<li>Add server-side session refresh so scheduled turns, such as a morning brief, become possible.</li></ul>
+      </section>
+
+      <blockquote class="takeaway">
+        <p class="kicker">What I took away</p>
+        <p>An agent is only as safe as the narrowest path it has to the real system. Putting every call through one gateway, acting as the real user, and separating &quot;prepare&quot; from &quot;commit&quot; meant I could reason about safety in one place instead of in every prompt. The research I did before writing code, mapping what the API actually does rather than what its spec says, was the part that made the rest of the design possible.</p>
+      </blockquote>
+    </div>
+
+    <aside class="case-side">
+      <dl class="facts">
+        <dt>Role</dt><dd>Sole engineer: API research, architecture, backend, frontend, deployment</dd>
+        <dt>Context</dt><dd>Creed Infotech, for ValueLoads</dd>
+        <dt>Status</dt><dd>Pre-release, in testing</dd>
+        <dt>Stack</dt><dd>Python, FastAPI, PostgreSQL, Redis, MinIO, OpenAI Responses API, Langfuse, React, TypeScript, Docker Compose</dd>
+      </dl>
+      <nav class="toc" aria-label="On this page">
+        <p class="kicker">On this page</p>
+        <ul>
+          <li><a href="#problem-h">The problem</a></li>
+          <li><a href="#approach-h">How I thought about it</a></li>
+          <li><a href="#built-h">What I built</a></li>
+          <li><a href="#arch-h">Architecture</a></li>
+          <li><a href="#flow-h">Key flow</a></li>
+          <li><a href="#dec-h">Decisions</a></li>
+          <li><a href="#hard-h">Hard parts</a></li>
+        </ul>
+      </nav>
+    </aside>
+  </div>
+
+  <nav class="wrap pager" aria-label="More projects">
+    <a class="prev" href="shipper-approval-agent.html"><span>Previous</span>An AI credit check where the model advises and never decides</a><a class="next" href="valueloads-voice.html"><span>Next</span>The agent that answers the phone and leaves clean data behind</a>
+  </nav>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <p class="logo">Kartikey Shaurya</p>
+      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="../index.html">Front page</a></li>
+        <li><a href="../projects/index.html">All projects</a></li>
+        <li><a href="../index.html#experience">Experience</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Elsewhere</h4>
+      <ul>
+        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+      </ul>
+    </div>
+    <p class="fine">
+      <span>© 2026 Kartikey Shaurya</span>
+      <span>Most client names and internal details are withheld. Architecture is shown at the component level.</span>
+    </p>
+  </div>
+</footer>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: "strict",
+    theme: "base",
+    flowchart: { curve: "basis", htmlLabels: true },
+    themeVariables: {
+      fontFamily: "Schibsted Grotesk, Helvetica Neue, Arial, sans-serif",
+      fontSize: "15px",
+      background: "#faedda",
+      primaryColor: "#fffdf9",
+      primaryBorderColor: "#1c1a17",
+      primaryTextColor: "#1c1a17",
+      lineColor: "#a51c30",
+      secondaryColor: "#faedda",
+      tertiaryColor: "#fffbf4",
+      clusterBkg: "#fffbf4",
+      clusterBorder: "#b9b8ad",
+      edgeLabelBackground: "#faedda"
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+{
+  "slug": "project-manager-mcp",
+  "theme": "platforms",
+  "order": 3,
+  "title": "AI-native project manager",
+  "headline": "A project tracker your AI assistant can work inside, safely",
+  "dek": "An AI-native project manager that puts planning, bugs, tickets, team chat and executive reporting in one multi-tenant app. ChatGPT and Claude can create and update work through MCP, acting with the user's own permissions.",
+  "summary": "Multi-tenant project manager with a governed AI layer and an MCP server for ChatGPT and Claude.",
+  "client": "Solo build",
+  "role": "Sole engineer: architecture, backend, frontend, AI layer, MCP server",
+  "status": "MVP",
+  "stack": [
+    "FastAPI",
+    "PostgreSQL + pgvector",
+    "Redis",
+    "Celery",
+    "React",
+    "TypeScript",
+    "TipTap",
+    "OpenAI",
+    "MCP",
+    "OAuth 2.1"
+  ],
+  "problem": [
+    "Product teams split their work across a tracker, a chat tool, a bug form and a slide deck for leadership. Each tool has its own idea of who can see what, and the weekly summary for the CEO gets assembled by hand from all of them.",
+    "AI assistants added a new version of the same problem. People already ask ChatGPT or Claude to turn a conversation into tasks, then copy the answer across by hand. Letting an assistant write straight into a workspace is only useful if it respects the same permissions as the person, cannot invent numbers in a report, and cannot quietly burn through the AI budget."
+  ],
+  "approach": [
+    "I started from the write path. Tasks get created by the UI, CSV import, ticket triage, automations, the AI assistant and MCP, and every one of those needs the same side effects: field history, activity log, notifications, watchers, webhooks, search re-indexing and a real-time broadcast. If each entry point did its own writes, each would forget something. <b>So I wrote a short design document that makes one task service the only writer</b>, and hung workflow rules, custom fields and dependency checks off its extension points. That is also why the app is a modular monolith: a task write touching ten concerns is one transaction there, and a saga anywhere else.",
+    "For tenancy I held one rule: the workspace is always derived on the server from the user's membership, never taken from the request. Permissions are a cumulative matrix of module and action (admin includes edit, edit includes view). The stricter layers, private projects and team scoping, sit behind flags with an access report you can review before switching them on.",
+    "For AI, the principle was facts first. Rules compute the counts, keys and dates, and the model only phrases them. Before a summary is accepted, every number in it is checked against the facts and every task reference against real tasks, and anything unsupported falls back to a plain sentence that is correct. When the AI proposes changes, it produces drafts that are checked against real projects and people, and a person approves them through the same single write path. Every model call goes through one gateway with feature flags, separate budgets for interactive and background work, and an audit record.",
+    "MCP came last and reused all of that. I built a small OAuth server on top of the existing accounts, so ChatGPT and Claude connect with the user's own login and act with the user's own permissions. The MCP server is a thin layer over the public API: it returns minimal results, labels which tools read, write or destroy, and stays read-only unless writes are deliberately switched on."
+  ],
+  "built": [
+    "Planning: projects, issue keys, subtasks, epics, sprints, drag-and-drop boards with stable ordering, a backlog, a calendar and a dependency timeline",
+    "Task dependencies with cycle detection that is safe under concurrent edits, a per-project warn or block mode, and automatic date scheduling",
+    "Per-project workflows with transition rules, validated custom fields, and team-scoped projects behind a feature flag",
+    "Collaboration: rich-text descriptions, mentions, watchers, notifications, team chat with presence, and real-time updates over WebSockets",
+    "An AI gateway with feature flags, token budgets, scrubbing of secrets and personal data before any model call, prompt versions locked by tests, and an audit record per call",
+    "AI features on top of it: task drafting from chat and screenshots, triage, hybrid semantic search, duplicate detection, standups, digests and executive briefs",
+    "Scheduled executive summaries rendered to HTML and PDF and emailed at most once",
+    "An MCP server and a self-hosted OAuth 2.1 authorization server, so AI assistants work inside a workspace with the user's own permissions"
+  ],
+  "architecture": {
+    "mermaid": "flowchart LR\n  U[\"Browser<br/>(React)\"] --> API[\"API<br/>(FastAPI modular monolith)\"]\n  U --> WS[\"WebSockets\"]\n  WS --> API\n  API --> TS[\"Single task<br/>write path\"]\n  API --> AIG[\"AI gateway<br/>flags, budgets, audit\"]\n  TS --> PG[(\"PostgreSQL<br/>+ pgvector\")]\n  API --> RD[(\"Redis<br/>jobs + pub/sub\")]\n  RD --> WK[\"Background workers\"]\n  WK --> AIG\n  AIG --> LLM[\"LLM provider\"]\n  AS[\"ChatGPT or Claude\"] -->|\"OAuth sign-in\"| API\n  AS --> MCP[\"MCP server\"]\n  MCP -->|\"user's own token\"| API",
+    "caption": "Every write, whether it comes from the UI, a background job or an AI assistant, passes the same API checks and the same task write path.",
+    "components": [
+      {
+        "name": "API",
+        "desc": "One deployable that resolves the user's organization and workspace on the server and enforces the permission matrix on every route."
+      },
+      {
+        "name": "Single task write path",
+        "desc": "The only code that creates or changes tasks, so history, notifications, webhooks, re-indexing and real-time updates are never skipped."
+      },
+      {
+        "name": "AI gateway",
+        "desc": "Wraps every model call with feature flags, token budgets, data scrubbing, prompt versions and an audit record."
+      },
+      {
+        "name": "Background workers",
+        "desc": "Run assistant replies, triage, digests, standups, executive reports and batch AI jobs off a Redis-backed queue."
+      },
+      {
+        "name": "PostgreSQL with pgvector",
+        "desc": "Holds all workspace data and serves hybrid search from full-text and vector indexes, with no separate search cluster."
+      },
+      {
+        "name": "MCP server",
+        "desc": "A thin layer over the public API that forwards the user's own token and returns minimal, schema-exact results."
+      }
+    ]
+  },
+  "flow": {
+    "title": "What happens when you ask ChatGPT to create a task",
+    "steps": [
+      "ChatGPT discovers the app's authorization server and registers itself as a client, using the standard OAuth flow that connectors expect.",
+      "The user signs in on the app's own consent page with their existing account and approves access.",
+      "ChatGPT calls a tool on the MCP server, which forwards the user's token to the public API.",
+      "The API validates the token, derives the workspace from the user's membership, and checks permissions exactly as it would for a request from the web app.",
+      "The task is created through the single write path, so history, notifications, webhooks and search indexing all run.",
+      "The MCP server returns a minimal result with no internal identifiers, and teammates see the new task appear on their boards in real time."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "One task write path",
+      "why": "Without it, import, triage, automations, the assistant and MCP would each forget a side effect, and the bugs would show up as missing history or silent webhooks.",
+      "alternative": "Side effects in route handlers or ORM event hooks.",
+      "tradeoff": "A large module that everything depends on, and every new side effect has to be added there."
+    },
+    {
+      "decision": "Facts first for AI summaries",
+      "why": "Rules compute the numbers, the model only writes the sentences, and a validator rejects any number or task reference that is not in the facts. A summary cannot claim twelve overdue tasks when there are three.",
+      "alternative": "Letting the model read raw data and write the summary.",
+      "tradeoff": "More code per feature, and output that is sometimes plainer than free-form text."
+    },
+    {
+      "decision": "The AI proposes drafts and a person approves them",
+      "why": "Drafts are checked against real projects and people, then applied through the normal write path. That builds trust, and every approval or rejection becomes an outcome signal for evaluation.",
+      "alternative": "Letting the AI write tasks directly.",
+      "tradeoff": "One extra click per change."
+    },
+    {
+      "decision": "Separate budgets for interactive and background AI",
+      "why": "An audit showed scheduled jobs consuming the shared budget, so users were refused because of work they never asked for.",
+      "alternative": "One global budget per workspace.",
+      "tradeoff": "Three budgets to tune instead of one."
+    },
+    {
+      "decision": "A self-hosted OAuth server for MCP",
+      "why": "Assistant connectors require a real OAuth flow, and building on the existing accounts means users connect with the login they already have.",
+      "alternative": "A managed identity provider, or pasting personal tokens, which connectors reject.",
+      "tradeoff": "I own the security of that server, so MCP is read-only by default and abuse protection is a pre-launch requirement."
+    },
+    {
+      "decision": "Hybrid search inside Postgres",
+      "why": "Full-text and vector search run in the main database with no extra cluster, and a pure-code fallback lets the tests run without the vector extension.",
+      "alternative": "Elasticsearch or a dedicated vector database.",
+      "tradeoff": "A dedicated retrieval tier will be needed if vector search ever saturates."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "Dependency cycles under concurrency",
+      "body": "Two people linking A to B and B to A at the same moment could create a loop. I serialised the cycle check per workspace with a transaction-scoped lock. I also treated 'done' as a status category rather than a fixed key, so custom workflows still unblock dependent tasks correctly."
+    },
+    {
+      "title": "Making AI trustworthy and affordable",
+      "body": "A self-audit found AI features with inconsistent behaviour in the UI, blocking calls inside async handlers, and background jobs eating user budgets. I centralised the gateway, added versioned prompts checked by tests, split the budgets, introduced facts-first validation and streaming, and gave the frontend one shared contract for every AI result."
+    },
+    {
+      "title": "Connecting to ChatGPT",
+      "body": "Pasting a personal token was rejected, because connectors expect OAuth. I built a narrow authorization server with discovery, consent and tokens bound to the MCP resource, on top of the existing account system. Every MCP tool is annotated with whether it reads, writes or destroys data."
+    },
+    {
+      "title": "Frontend weight with a rich editor",
+      "body": "The rich-text editor and drag-and-drop libraries are heavy. I lazy-load every page, split CSS per route, keep shared hooks out of the entry bundle, and enforce byte budgets in the build, so a regression fails before it ships."
+    }
+  ],
+  "next": [
+    "Run the backend tests, end-to-end tests and bundle budgets in CI on every merge request.",
+    "Add queue-depth and job-age metrics, and split background queues by priority.",
+    "Move WebSocket and streaming connections into a dedicated real-time gateway once connection counts justify it.",
+    "Add database-level row security as defence in depth behind the application checks, then finish the ChatGPT app submission."
+  ],
+  "lesson": "When many things write the same data, give them one door. The single task write path made everything after it cheap: AI drafts, automations and MCP all inherited correct behaviour without extra work. The same idea applies to AI itself. Put every model call behind one gateway, and let the model phrase facts instead of producing them."
+}

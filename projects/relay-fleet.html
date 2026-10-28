@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Relay: A commute platform that can explain every ride it books | Kartikey Shaurya</title>
+  <meta name="description" content="Relay runs a company&#x27;s employee transport end to end: policy-checked booking, approvals, dispatch, live GPS tracking, SOS and vendor billing. It is a Rust backend, a role-gated React console and two Flutter apps, one for riders and one for drivers.">
+  <meta name="author" content="Kartikey Shaurya">
+  <link rel="canonical" href="https://kartikeyshaurya.github.io/projects/relay-fleet.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Relay: A commute platform that can explain every ride it books | Kartikey Shaurya">
+  <meta property="og:description" content="Relay runs a company&#x27;s employee transport end to end: policy-checked booking, approvals, dispatch, live GPS tracking, SOS and vendor billing. It is a Rust backend, a role-gated React console and two Flutter apps, one for riders and one for drivers.">
+  <meta property="og:url" content="https://kartikeyshaurya.github.io/projects/relay-fleet.html">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="wrap util">
+    <ul>
+      <li>Chandigarh, India</li>
+    </ul>
+    <ul>
+      <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
+      <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a class="pdf" href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+    </ul>
+  </div>
+
+  <div class="wrap masthead masthead--slim">
+    <a class="logo" href="../index.html">Kartikey Shaurya</a>
+    <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
+  </div>
+
+  <nav class="primary" aria-label="Sections">
+    <ul>
+      <li><a href="../index.html">Front page</a></li>
+      <li><a href="../projects/index.html" class="is-active" aria-current="page">Projects</a></li>
+      <li><a href="../index.html#experience">Experience</a></li>
+      <li><a href="../index.html#about">About</a></li>
+      <li><a class="cta" href="../index.html#hire">Hire me</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" class="case">
+  <section class="wrap case-head">
+    <p class="kicker"><a href="index.html">Projects</a> <span class="fmt">Platforms &amp; Products</span></p>
+    <h1>A commute platform that can explain every ride it books</h1>
+    <p class="dek">Relay runs a company&#x27;s employee transport end to end: policy-checked booking, approvals, dispatch, live GPS tracking, SOS and vendor billing. It is a Rust backend, a role-gated React console and two Flutter apps, one for riders and one for drivers.</p>
+    <p class="byline">By <b>Kartikey Shaurya</b> · Relay · Creed Infotech, internal product for corporate employee transport</p>
+  </section>
+
+  <div class="wrap case-grid">
+    <div class="case-body">
+
+      <section aria-labelledby="problem-h">
+        <h2 id="problem-h">The problem</h2>
+        <div class="prose"><p>Companies in India that run night shifts are responsible for getting every employee home safely. That comes with rules: escorts for women on late rides, approval chains, cost-centre budgets, vendor rate cards, and a record of every trip that someone can audit later. In most places this still runs on spreadsheets and phone calls to vendors.</p>
+<p>Everyone involved wants something different. Employees want a cab that turns up and a way to call for help. Drivers want clear instructions on a phone that keeps working on a weak signal. The transport desk wants to plan tomorrow&#x27;s cabs and watch tonight&#x27;s. HR and finance want to know why a ride happened, who approved it and what it cost. When those live in separate tools, nobody can answer that last question.</p></div>
+      </section>
+
+      <section aria-labelledby="approach-h">
+        <h2 id="approach-h">How I thought about it</h2>
+        <div class="prose prose--lead"><p>The first thing I noticed was that the hard part was not any single screen. It was agreement. A booking, the trip it rides on, the budget it reserved and the message telling the driver all have to agree, and in a safety product they have to agree even when something fails halfway. That pointed me away from microservices. One company&#x27;s fleet is a modest load, and what matters is that a state change and its side effects commit together. <b>I built a modular monolith in Rust: one binary, one module per domain, and every state change, its audit event and its queued side effects written in a single Postgres transaction.</b></p>
+<p>The second principle came straight from the product brief: make every decision explainable. Policy, fares, driver scoring and pooling are pure functions with no clock and no I/O. The booking form runs a dry-run check as the employee types and shows a rule-by-rule trace of allow, check or block. Driver allocation keeps its score broken into parts, because a bare number cannot be reviewed. The apps hold no business rules and read every setting from the server, because phones lag behind releases and a build from last month still talks to today&#x27;s server.</p>
+<p>The constraint that shaped the mobile side was the network. Drivers move between towers, switch to a navigation app, and phones kill background work. I treated the connection as unreliable by default. The driver app keeps every location fix unconfirmed until the server proves it has read it, buffers fixes to disk, and replays them on reconnect, and the server drops duplicates. On the server, live positions are validated in memory and pushed to watchers before they are written to the database, so a slow write never delays the map.</p>
+<p>Where I accepted a cost, I wrote it down. Real-time fan-out lives in process memory, which is simple and fast on one node but does not survive splitting the API from the workers. I documented exactly what breaks and the fix I would build next, instead of adding a message broker the current scale did not need.</p></div>
+      </section>
+
+      <section aria-labelledby="built-h">
+        <h2 id="built-h">What I built</h2>
+        <ul class="ticks"><li>A policy engine that checks every booking rule (night windows, escort rules, distance caps, blackout zones, budgets and grade caps) and returns a visible trace for each one</li>
+<li>An ordered approval chain with escalation and expiry, and budget reservation that cannot double-spend under concurrent bookings</li>
+<li>Two dispatch modes per company: self-service with timed driver offers, and transport-desk planning that turns shifts and cab groups into the next day&#x27;s trips</li>
+<li>Live GPS tracking over WebSockets: a fresh feed for each rider, and a coalesced fleet view for the control tower</li>
+<li>An SOS path that never waits on GPS, runs on its own job queue so nothing can delay it, and re-pages and escalates until someone acknowledges it</li>
+<li>Multi-tenancy added to a live schema, with each company&#x27;s data isolated at the database level and a CI check that rejects tables nobody has classified</li>
+<li>Two Flutter apps sharing one client design: silent session refresh, safe retries on bad networks, version gating, reconnect with backoff, and a disk-backed location buffer on the driver side</li>
+<li>Finance basics: integer money, vendor rate cards, cheapest-compliant-vendor quotes, invoice matching and chargeback export</li></ul>
+      </section>
+
+      <section aria-labelledby="arch-h">
+        <h2 id="arch-h">How it fits together</h2>
+        <figure class="diagram">
+          <pre class="mermaid">flowchart LR
+  R[&quot;Rider app&lt;br/&gt;(Flutter)&quot;] --&gt; GW[&quot;Gateway&quot;]
+  D[&quot;Driver app&lt;br/&gt;(Flutter)&quot;] --&gt; GW
+  W[&quot;Web console&lt;br/&gt;(React, role-gated)&quot;] --&gt; GW
+  GW --&gt; API[&quot;REST API&quot;]
+  GW --&gt; WS[&quot;WebSocket gateway&quot;]
+  API --&gt; DOM[&quot;Domain modules&lt;br/&gt;policy, booking, dispatch,&lt;br/&gt;trip, safety, finance&quot;]
+  WS --&gt; LIVE[&quot;Live positions&lt;br/&gt;(in memory)&quot;]
+  LIVE --&gt; HUB[&quot;Realtime hub&quot;]
+  HUB --&gt; WS
+  DOM --&gt; PG[(&quot;PostgreSQL + PostGIS&lt;br/&gt;data, jobs, outbox&quot;)]
+  WK[&quot;Workers&lt;br/&gt;allocation, SOS escalation,&lt;br/&gt;notifications&quot;] --&gt; PG
+  WK --&gt; HUB
+  D -.-&gt;|&quot;direct upload&quot;| S3[(&quot;Object storage&quot;)]</pre>
+          <figcaption>One Rust binary serves the API, the sockets and the background workers, with Postgres as the single source of truth.</figcaption>
+        </figure>
+        <dl class="components"><div><dt>Rider and driver apps</dt><dd>Flutter clients that hold no business rules and read every setting, from GPS cadence to SOS timings, from the server.</dd></div>
+<div><dt>Web console</dt><dd>One React build that mounts only the portals a user&#x27;s roles allow: employee, control tower, HR, finance and vendor.</dd></div>
+<div><dt>Domain modules</dt><dd>Booking, trip and incident state machines, each changed through a single transition function that also records the audit event and queues the side effects.</dd></div>
+<div><dt>Live positions and realtime hub</dt><dd>Keeps the last fix per driver in memory and pushes positions to riders and the control tower without a database round trip.</dd></div>
+<div><dt>Workers</dt><dd>Run allocation, approval escalation, SOS escalation and notification delivery from durable job queues stored in Postgres.</dd></div>
+<div><dt>PostgreSQL with PostGIS</dt><dd>Holds domain data, geo zones, the job queue and the transactional outbox, with constraints that enforce rules such as no overlapping trips for one driver.</dd></div></dl>
+      </section>
+
+      <section aria-labelledby="flow-h">
+        <h2 id="flow-h">What happens when an employee books a cab</h2>
+        <ol class="steps"><li>The employee picks a slot. The app only offers slots that the server&#x27;s own night cut-off rule would accept.</li>
+<li>As the form changes, the server runs a dry-run policy check and returns a rule-by-rule trace plus a quote from the cheapest compliant vendor.</li>
+<li>On submit, the same evaluation runs inside one transaction that creates the booking, builds its approval steps, reserves budget and queues the notifications.</li>
+<li>Approvers decide. An unanswered step escalates to the approver&#x27;s manager, and a booking nobody decides on expires before pickup.</li>
+<li>The approved booking is planned onto a trip, alone or pooled with colleagues, and a boarding code is issued.</li>
+<li>The allocator scores eligible drivers and sends a timed offer. The first valid acceptance wins, and the trip moves to assigned in the same transaction.</li>
+<li>The driver streams GPS. The rider watches the cab arrive, boards with the code, and has one-tap SOS for the whole ride.</li></ol>
+      </section>
+
+      <section aria-labelledby="dec-h">
+        <h2 id="dec-h">Decisions and trade-offs</h2>
+        <div class="decisions"><article class="decision">
+  <h3>A modular monolith in one Rust binary</h3>
+  <dl>
+    <dt>Why</dt><dd>The hard problems were correctness problems: a booking, its trip, the budget hold and the notification must agree. One process and one database let them commit together, and module boundaries keep a later split possible.</dd>
+    <dt>Instead of</dt><dd>Microservices connected by a message broker.</dd>
+    <dt>The cost</dt><dd>Simpler operations and real transactions. Real-time fan-out lives in memory, so scaling out needs a shared bus, which I documented as the next step.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Postgres for the job queue and the outbox</h3>
+  <dl>
+    <dt>Why</dt><dd>A job and the state change that created it commit atomically, and there is one system to run, back up and reason about.</dd>
+    <dt>Instead of</dt><dd>Redis, RabbitMQ or a managed cloud queue.</dd>
+    <dt>The cost</dt><dd>Some polling latency and a throughput ceiling, both well beyond what this fleet needs.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Every side effect goes through a transactional outbox</h3>
+  <dl>
+    <dt>Why</dt><dd>A driver is never recorded as assigned without the notification being queued, and never notified without being recorded. A provider outage cannot fail a booking. SOS messages jump the queue.</dd>
+    <dt>Instead of</dt><dd>Calling email or push providers inline, or fire-and-forget events.</dd>
+    <dt>The cost</dt><dd>One poll of delay on durable messages. Live GPS frames skip the outbox, because a lost fix is replaced seconds later.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>The server is the authority and clients only render</h3>
+  <dl>
+    <dt>Why</dt><dd>Rules can change without an app release, and pure functions are easy to test and to explain to an auditor.</dd>
+    <dt>Instead of</dt><dd>Duplicating policy rules in React and Flutter.</dd>
+    <dt>The cost</dt><dd>More round trips, such as a policy check while the user types, in exchange for one source of truth.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Tenant isolation in the database, not in every query</h3>
+  <dl>
+    <dt>Why</dt><dd>A query that forgets a filter still cannot return another company&#x27;s rows.</dd>
+    <dt>Instead of</dt><dd>A company filter added by hand to every query, or a database per tenant.</dd>
+    <dt>The cost</dt><dd>Background jobs must explicitly enter a company&#x27;s scope, which takes discipline and a CI check to enforce.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Fan out GPS before writing it</h3>
+  <dl>
+    <dt>Why</dt><dd>Validating against in-memory state and publishing first took database round trips off the latency-critical path. Writes are batched behind it.</dd>
+    <dt>Instead of</dt><dd>Write each fix, then publish it.</dd>
+    <dt>The cost</dt><dd>A hard crash can lose a few seconds of breadcrumbs that watchers already saw. Under database pressure the write queue sheds fixes instead of growing without bound.</dd>
+  </dl>
+</article></div>
+      </section>
+
+      <section aria-labelledby="hard-h">
+        <h2 id="hard-h">The hard parts</h2>
+        <ul class="hard"><li><h3>GPS on flaky mobile networks</h3><p>A network switch can leave a socket half-open, so fixes vanish silently. The driver app treats every fix as unconfirmed until a later heartbeat reply proves the server read it, keeps a buffer on disk so an OS kill loses nothing, and replays it on reconnect. The server drops duplicates and shows only the newest buffered fix, so a cab is never animated through places it left long ago.</p></li>
+<li><h3>Background location on modern Android and iOS</h3><p>The phone has to keep reporting while the driver navigates in another app. During trips and SOS the stream runs as a foreground location service, avoids restarts that Android refuses from the background, and falls back to one-shot reads so tracking never silently stops. The server sets the cadence per trip state to balance battery against what the rider expects to see.</p></li>
+<li><h3>Two dispatch models in one system</h3><p>The client wanted both self-service booking and a transport desk that plans tomorrow&#x27;s cabs. I made dispatch mode a per-company setting: in planned mode the offer machinery switches off and an evening job builds trips once per date. Supporting trips assigned the night before meant replacing a one-active-trip rule with a database constraint on overlapping time windows.</p></li>
+<li><h3>Retrofitting multi-tenancy</h3><p>Several client companies had to share one deployment after the schema already existed. I classified every table as company-owned, shared fleet or platform, added isolation policies, and wrote a CI check that fails when a new table is left unclassified. Notifications carry their company, so each one is delivered in the right scope.</p></li></ul>
+      </section>
+
+      <section aria-labelledby="next-h">
+        <h2 id="next-h">What I'd do next</h2>
+        <ul class="ticks ticks--plain"><li>Build a shared real-time bus so the API and workers can run as separate services, then run the planned load test.</li>
+<li>Ship push notifications with templates that never carry boarding codes or addresses.</li>
+<li>Add metrics, tracing and alarms for outbox lag, dead jobs and unacknowledged SOS before a wider pilot.</li>
+<li>Finish geofence, route-corridor and overspeed alerts, and move the duplicated Flutter UI kit into one shared package.</li></ul>
+      </section>
+
+      <blockquote class="takeaway">
+        <p class="kicker">What I took away</p>
+        <p>Pick the architecture for the failure you are most afraid of. Here that was two parts of the system disagreeing about a ride, so I chose one transaction over many services and wrote down the scaling cost I was accepting. Writing the limit next to the design made every later decision easier to defend, and easier to change.</p>
+      </blockquote>
+    </div>
+
+    <aside class="case-side">
+      <dl class="facts">
+        <dt>Role</dt><dd>Lead engineer: architecture, Rust backend, both Flutter apps</dd>
+        <dt>Context</dt><dd>Creed Infotech, internal product for corporate employee transport</dd>
+        <dt>Status</dt><dd>Pilot-stage MVP</dd>
+        <dt>Stack</dt><dd>Rust (Actix Web, Tokio), PostgreSQL + PostGIS, sqlx, WebSockets, React, TanStack Query, Flutter, S3-compatible storage, Docker, Terraform on AWS</dd>
+      </dl>
+      <nav class="toc" aria-label="On this page">
+        <p class="kicker">On this page</p>
+        <ul>
+          <li><a href="#problem-h">The problem</a></li>
+          <li><a href="#approach-h">How I thought about it</a></li>
+          <li><a href="#built-h">What I built</a></li>
+          <li><a href="#arch-h">Architecture</a></li>
+          <li><a href="#flow-h">Key flow</a></li>
+          <li><a href="#dec-h">Decisions</a></li>
+          <li><a href="#hard-h">Hard parts</a></li>
+        </ul>
+      </nav>
+    </aside>
+  </div>
+
+  <nav class="wrap pager" aria-label="More projects">
+    <a class="prev" href="broker-inbox-ai.html"><span>Previous</span>Turning a broker&#x27;s inbox into drafted, reviewable TMS actions</a><a class="next" href="bulkmailer.html"><span>Next</span>Bulk email that keeps sending when its providers fail</a>
+  </nav>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <p class="logo">Kartikey Shaurya</p>
+      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="../index.html">Front page</a></li>
+        <li><a href="../projects/index.html">All projects</a></li>
+        <li><a href="../index.html#experience">Experience</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Elsewhere</h4>
+      <ul>
+        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+      </ul>
+    </div>
+    <p class="fine">
+      <span>© 2026 Kartikey Shaurya</span>
+      <span>Most client names and internal details are withheld. Architecture is shown at the component level.</span>
+    </p>
+  </div>
+</footer>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: "strict",
+    theme: "base",
+    flowchart: { curve: "basis", htmlLabels: true },
+    themeVariables: {
+      fontFamily: "Schibsted Grotesk, Helvetica Neue, Arial, sans-serif",
+      fontSize: "15px",
+      background: "#faedda",
+      primaryColor: "#fffdf9",
+      primaryBorderColor: "#1c1a17",
+      primaryTextColor: "#1c1a17",
+      lineColor: "#a51c30",
+      secondaryColor: "#faedda",
+      tertiaryColor: "#fffbf4",
+      clusterBkg: "#fffbf4",
+      clusterBorder: "#b9b8ad",
+      edgeLabelBackground: "#faedda"
+    }
+  });
+</script>
+</body>
+</html>

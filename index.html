@@ -9,15 +9,14 @@
   <link rel="canonical" href="https://kartikeyshaurya.github.io/">
   <meta property="og:type" content="profile">
   <meta property="og:title" content="Kartikey Shaurya — Machine Learning Engineer">
-  <meta property="og:description" content="Production AI, reported from the inside: voice agents, multi-agent platforms, recommenders and a 160 GB data lake.">
+  <meta property="og:description" content="Digital résumé: production LLM applications, recommendation systems and data pipelines, with the reasoning behind each.">
   <meta property="og:url" content="https://kartikeyshaurya.github.io/">
   <meta name="twitter:card" content="summary">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/site.css">
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=Schibsted+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
 
   <script type="application/ld+json">
   {
@@ -34,558 +33,729 @@
     "knowsAbout": ["Machine Learning", "Large Language Models", "NLP", "Recommender Systems", "MLOps", "Elasticsearch", "LangGraph", "PyTorch"]
   }
   </script>
+
+  <!-- Front page only. Project pages still use assets/css/site.css. -->
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #000;
+      --paper: #fff;
+      --mute: #555;
+      --line: #000;
+      --hair: #ccc;
+      --serif: "Newsreader", "Iowan Old Style", "Times New Roman", Times, serif;
+      --sans:  "Schibsted Grotesk", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: var(--serif);
+      font-size: 1.0625rem;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3, h4, p, ul, ol, dl, dd { margin: 0; }
+    a { color: inherit; text-underline-offset: .15em; text-decoration-thickness: 1px; }
+    a:hover { text-decoration-thickness: 2px; }
+    :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+    ::selection { background: var(--ink); color: var(--paper); }
+
+    .skip { position: absolute; left: 1rem; top: -3rem; background: var(--ink); color: var(--paper); padding: .4rem .7rem; }
+    .skip:focus { top: .5rem; }
+
+    .page { margin: 0 auto; padding: .5rem clamp(16px, 4vw, 3rem) 4rem; }
+
+    /* ---------- masthead, newspaper style ---------- */
+    body { border-top: 4px solid var(--ink); }
+    .top { font-family: var(--sans); }
+    .top ul { list-style: none; padding: 0; }
+    .top a { text-decoration: none; }
+
+    .util {
+      display: flex; flex-wrap: wrap; justify-content: space-between; gap: .4rem 1.5rem;
+      padding: .6rem clamp(16px, 4vw, 3rem);
+      font-size: .875rem; color: var(--mute); border-bottom: 1px solid var(--hair);
+    }
+    .util ul { display: flex; flex-wrap: wrap; gap: .25rem 1.5rem; }
+    .util a:hover { color: var(--ink); text-decoration: underline; }
+
+    .masthead { text-align: center; padding: clamp(1.5rem, 4vw, 3rem) 16px clamp(1rem, 2vw, 1.5rem); }
+    .masthead h1 { font-family: var(--serif); font-size: clamp(2.5rem, 2rem + 5vw, 5.5rem); font-weight: 600; letter-spacing: -.02em; line-height: 1; }
+    .masthead .tag { margin-top: .9rem; font-size: clamp(.95rem, .9rem + .3vw, 1.125rem); color: var(--mute); }
+    .masthead .tag b { color: var(--ink); font-weight: 500; }
+
+    .primary { border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); }
+    .primary ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 0 clamp(1rem, 3vw, 2.5rem); padding: 0 16px; }
+    .primary a {
+      display: block; padding: 1rem 0 .85rem; font-weight: 700; font-size: clamp(.9rem, .85rem + .3vw, 1.125rem);
+      border-bottom: 3px solid transparent;
+    }
+    .primary a:hover, .primary a.is-active { border-bottom-color: var(--ink); }
+    .primary .cta { text-decoration: underline; text-underline-offset: .2em; }
+    @media (max-width: 560px) {
+      .primary ul { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; gap: 0 1.25rem; }
+      .primary a { white-space: nowrap; }
+    }
+
+    .contact { margin-top: .6rem; font-size: .95rem; }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1rem; margin-top: .6rem; }
+    .toolbar .hint { margin: 0; }
+    .toolbar button {
+      font: inherit; font-size: .85rem; letter-spacing: .04em;
+      background: var(--paper); color: var(--ink);
+      border: 1px solid var(--ink); padding: .35rem .9rem; cursor: pointer;
+    }
+    .toolbar button:hover { background: var(--ink); color: var(--paper); }
+
+    /* ---------- sections ---------- */
+    section { margin-top: 2.25rem; }
+    section > h2 {
+      font-size: 1rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+      padding-bottom: .3rem; border-bottom: 1px solid var(--line); margin-bottom: .9rem;
+    }
+    .lede { text-align: justify; hyphens: auto; }
+    @media (max-width: 560px) { .lede { text-align: left; } }
+    .hint { margin-top: .6rem; font-size: .9rem; font-style: italic; color: var(--mute); }
+
+    /* ---------- roles ---------- */
+    .job + .job { margin-top: 1.75rem; }
+    .job-head { display: grid; grid-template-columns: 1fr auto; gap: 0 1rem; }
+    .job-head h3 { font-size: 1.0625rem; font-weight: 700; }
+    .job-head .when { text-align: right; white-space: nowrap; }
+    .job-head .where { text-align: right; font-style: italic; }
+    @media (max-width: 560px) {
+      .job-head { grid-template-columns: 1fr; }
+      .job-head .when, .job-head .where { text-align: left; }
+      .job-head .when { order: 3; color: var(--mute); }
+      .job-head .where { order: 4; color: var(--mute); }
+    }
+
+    ol.points { margin-top: .5rem; padding-left: 1.6rem; }
+    ol.points > li { padding-left: .25rem; }
+    ol.points > li + li { margin-top: .35rem; }
+
+    /* each bullet opens into a write-up */
+    details > summary { cursor: pointer; list-style: none; }
+    details > summary::-webkit-details-marker { display: none; }
+    details > summary::after {
+      content: "+"; display: inline-block; margin-left: .4em; width: 1.1em; height: 1.1em;
+      border: 1px solid var(--ink); font-size: .75em; line-height: 1em; text-align: center; vertical-align: .12em;
+    }
+    details[open] > summary::after { content: "−"; background: var(--ink); color: var(--paper); }
+    details > summary:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .15em; }
+
+    .deep { margin: .7rem 0 1rem; padding: .1rem 0 .1rem 1rem; border-left: 2px solid var(--ink); font-size: .98rem; }
+    .deep h4 { font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-top: .8rem; }
+    .deep h4:first-child { margin-top: .2rem; }
+    .deep p { margin-top: .2rem; }
+    .deep .stack { margin-top: .8rem; padding-top: .5rem; border-top: 1px solid var(--hair); font-size: .9rem; color: var(--mute); }
+    .deep .stack b { color: var(--ink); }
+
+    /* ---------- skills / education ---------- */
+    dl.grid { display: grid; grid-template-columns: 13rem 1fr; gap: .2rem 1rem; }
+    dl.grid dt { font-weight: 700; }
+    @media (max-width: 560px) { dl.grid { grid-template-columns: 1fr; } dl.grid dd { margin-bottom: .5rem; } }
+
+    .edu { display: grid; grid-template-columns: 1fr auto; gap: 0 1rem; }
+    .edu + .edu { margin-top: .6rem; }
+    @media (max-width: 560px) { .edu { grid-template-columns: 1fr; } }
+
+    /* ---------- projects ---------- */
+    .proj + .proj { margin-top: 1rem; }
+    .proj > summary b, .proj > b { font-weight: 700; }
+
+    /* generated by _build/build_projects.py between the PROJECTS markers */
+    .work { margin-top: 1.25rem; padding-top: .7rem; border-top: 1px solid var(--hair); }
+    .work > p { font-size: .95rem; color: var(--mute); }
+    .work > h4 { margin-top: 1rem; font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+    .work .status { font-size: .85rem; color: var(--mute); white-space: nowrap; }
+
+    .oss { list-style: none; padding: 0; }
+    .oss li + li { margin-top: .35rem; }
+
+    /* wide screens: section label on the left, content across the rest */
+    @media (min-width: 1000px) {
+      body { font-size: 1.125rem; }
+      section {
+        display: grid; grid-template-columns: 14rem 1fr; gap: 0 clamp(2rem, 4vw, 4rem);
+        border-top: 1px solid var(--line); padding-top: 1.1rem; margin-top: 2.75rem;
+      }
+      section > * { grid-column: 2; }
+      section > h2 {
+        grid-column: 1; grid-row: 1 / span 20; align-self: start;
+        position: sticky; top: 1.25rem; border-bottom: 0; padding: 0; margin: 0;
+      }
+      .deep { columns: 2; column-gap: 2.5rem; }
+      .deep h4 { break-after: avoid; }
+      .deep p { break-inside: avoid; }
+      .deep .stack { column-span: all; }
+      .oss { columns: 2; column-gap: 2.5rem; }
+      .oss li { break-inside: avoid; }
+    }
+
+    footer { margin-top: 3rem; padding-top: .75rem; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; justify-content: space-between; gap: .5rem 1rem; font-size: .85rem; color: var(--mute); }
+
+    @media print {
+      body { font-size: 10.5pt; }
+      .page { padding: 0; max-width: none; }
+      .toolbar, .skip, .hint, .util, .primary { display: none; }
+      body { border-top: 0; }
+      section { display: block; border-top: 0; }
+      section > h2 { position: static; border-bottom: 1px solid var(--line); padding-bottom: .3rem; margin-bottom: .9rem; }
+      .deep, .oss { columns: 1; }
+      details > summary::after { display: none; }
+      a { text-decoration: none; }
+      .job, .proj, .deep { break-inside: avoid; }
+    }
+  </style>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 
-<!-- Illustration sprite: flat editorial graphics, one per story. -->
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <defs>
-    <symbol id="ill-voice" viewBox="0 0 600 400">
-      <rect width="600" height="400" fill="#faedda"/>
-      <line x1="40" y1="200" x2="560" y2="200" stroke="#1c1a17" stroke-width="1"/>
-      <g fill="#a51c30">
-        <rect x="60" y="180" width="8" height="40"/><rect x="78" y="165" width="8" height="70"/><rect x="96" y="150" width="8" height="100"/>
-        <rect x="114" y="120" width="8" height="160"/><rect x="132" y="90" width="8" height="220"/><rect x="150" y="140" width="8" height="120"/>
-        <rect x="168" y="175" width="8" height="50"/><rect x="186" y="155" width="8" height="90"/><rect x="204" y="100" width="8" height="200"/>
-        <rect x="222" y="70" width="8" height="260"/><rect x="240" y="130" width="8" height="140"/><rect x="258" y="185" width="8" height="30"/>
-        <rect x="276" y="160" width="8" height="80"/><rect x="294" y="110" width="8" height="180"/><rect x="312" y="60" width="8" height="280"/>
-        <rect x="330" y="95" width="8" height="210"/><rect x="348" y="150" width="8" height="100"/><rect x="366" y="180" width="8" height="40"/>
-        <rect x="384" y="135" width="8" height="130"/><rect x="402" y="105" width="8" height="190"/><rect x="420" y="145" width="8" height="110"/>
-        <rect x="438" y="170" width="8" height="60"/><rect x="456" y="188" width="8" height="24"/><rect x="474" y="160" width="8" height="80"/>
-        <rect x="492" y="178" width="8" height="44"/><rect x="510" y="190" width="8" height="20"/><rect x="528" y="194" width="8" height="12"/>
-      </g>
-      <circle cx="312" cy="200" r="7" fill="#1c1a17"/>
-    </symbol>
-
-    <symbol id="ill-agents" viewBox="0 0 600 400">
-      <rect width="600" height="400" fill="#faedda"/>
-      <g stroke="#1c1a17" stroke-width="1.5" fill="none">
-        <path d="M120 300 L250 120 L420 160 L480 300 Z"/><path d="M250 120 L300 260 L480 300"/><path d="M120 300 L300 260 L420 160"/><path d="M300 260 L390 340"/><path d="M250 120 L120 300"/>
-      </g>
-      <g fill="#a51c30"><circle cx="120" cy="300" r="18"/><circle cx="250" cy="120" r="24"/><circle cx="420" cy="160" r="18"/><circle cx="480" cy="300" r="22"/><circle cx="390" cy="340" r="12"/></g>
-      <circle cx="300" cy="260" r="30" fill="#1c1a17"/>
-      <circle cx="300" cy="260" r="10" fill="#faedda"/>
-    </symbol>
-
-    <symbol id="ill-lake" viewBox="0 0 600 400">
-      <rect width="600" height="400" fill="#faedda"/>
-      <g fill="none" stroke="#1c1a17" stroke-width="1.5">
-        <rect x="80" y="270" width="440" height="60"/><rect x="110" y="190" width="380" height="60"/><rect x="140" y="110" width="320" height="60"/>
-      </g>
-      <g fill="#a51c30">
-        <rect x="96" y="286" width="28" height="28"/><rect x="134" y="286" width="28" height="28"/><rect x="172" y="286" width="28" height="28"/><rect x="210" y="286" width="28" height="28"/><rect x="248" y="286" width="28" height="28"/><rect x="286" y="286" width="28" height="28"/><rect x="324" y="286" width="28" height="28"/><rect x="362" y="286" width="28" height="28"/>
-        <rect x="126" y="206" width="28" height="28"/><rect x="164" y="206" width="28" height="28"/><rect x="202" y="206" width="28" height="28"/><rect x="240" y="206" width="28" height="28"/>
-        <rect x="156" y="126" width="28" height="28"/>
-      </g>
-      <g fill="#eed6aa"><rect x="400" y="286" width="28" height="28"/><rect x="438" y="286" width="28" height="28"/><rect x="278" y="206" width="28" height="28"/><rect x="316" y="206" width="28" height="28"/><rect x="354" y="206" width="28" height="28"/><rect x="194" y="126" width="28" height="28"/><rect x="232" y="126" width="28" height="28"/></g>
-      <path d="M300 40 v50 M292 82 l8 8 8-8" stroke="#1c1a17" stroke-width="1.5" fill="none"/>
-    </symbol>
-
-    <symbol id="ill-redact" viewBox="0 0 600 400">
-      <rect width="600" height="400" fill="#faedda"/>
-      <g fill="#b9b8ad">
-        <rect x="60" y="80" width="200" height="10"/><rect x="270" y="80" width="90" height="10"/>
-        <rect x="60" y="110" width="120" height="10"/><rect x="260" y="110" width="180" height="10"/>
-        <rect x="60" y="140" width="300" height="10"/>
-        <rect x="60" y="170" width="80" height="10"/><rect x="250" y="170" width="140" height="10"/>
-        <rect x="60" y="200" width="240" height="10"/><rect x="310" y="200" width="60" height="10"/>
-        <rect x="60" y="230" width="160" height="10"/>
-      </g>
-      <g fill="#1c1a17"><rect x="190" y="106" width="60" height="18"/><rect x="150" y="166" width="90" height="18"/><rect x="230" y="226" width="140" height="18"/></g>
-      <circle cx="480" cy="150" r="60" fill="none" stroke="#1c1a17" stroke-width="1.5"/>
-      <g fill="#a51c30"><rect x="450" y="125" width="20" height="20"/><rect x="470" y="125" width="20" height="20"/><rect x="490" y="125" width="20" height="20"/><rect x="460" y="145" width="20" height="20"/><rect x="480" y="145" width="20" height="20"/><rect x="500" y="145" width="20" height="20"/><rect x="470" y="165" width="20" height="20"/><rect x="490" y="165" width="20" height="20"/></g>
-      <rect x="60" y="290" width="480" height="50" fill="none" stroke="#a51c30" stroke-width="1.5"/>
-      <rect x="60" y="290" width="330" height="50" fill="#a51c30"/>
-    </symbol>
-
-    <symbol id="ill-map" viewBox="0 0 600 400">
-      <rect width="600" height="400" fill="#faedda"/>
-      <g stroke="#eed6aa" stroke-width="1"><path d="M0 100 H600 M0 200 H600 M0 300 H600 M100 0 V400 M200 0 V400 M300 0 V400 M400 0 V400 M500 0 V400"/></g>
-      <g fill="#1c1a17"><circle cx="80" cy="60" r="3"/><circle cx="140" cy="130" r="3"/><circle cx="210" cy="70" r="3"/><circle cx="330" cy="40" r="3"/><circle cx="420" cy="90" r="3"/><circle cx="520" cy="60" r="3"/><circle cx="90" cy="250" r="3"/><circle cx="160" cy="330" r="3"/><circle cx="300" cy="350" r="3"/><circle cx="470" cy="330" r="3"/><circle cx="540" cy="250" r="3"/><circle cx="380" cy="250" r="3"/><circle cx="250" cy="180" r="3"/><circle cx="60" cy="170" r="3"/></g>
-      <g fill="#a51c30" opacity=".9"><circle cx="230" cy="250" r="34"/><circle cx="440" cy="170" r="26"/><circle cx="130" cy="110" r="18"/></g>
-      <g fill="none" stroke="#a51c30" stroke-width="1.5"><circle cx="230" cy="250" r="52"/><circle cx="440" cy="170" r="42"/><circle cx="130" cy="110" r="30"/></g>
-    </symbol>
-
-    <symbol id="ill-clusters" viewBox="0 0 600 400">
-      <rect width="600" height="400" fill="#faedda"/>
-      <g fill="#1c1a17"><circle cx="120" cy="120" r="5"/><circle cx="150" cy="95" r="5"/><circle cx="170" cy="140" r="5"/><circle cx="110" cy="160" r="5"/><circle cx="190" cy="105" r="5"/><circle cx="140" cy="175" r="5"/></g>
-      <g fill="#a51c30"><circle cx="320" cy="230" r="5"/><circle cx="350" cy="260" r="5"/><circle cx="300" cy="280" r="5"/><circle cx="370" cy="220" r="5"/><circle cx="335" cy="300" r="5"/><circle cx="290" cy="240" r="5"/><circle cx="390" cy="270" r="5"/></g>
-      <g fill="#726a5b"><circle cx="480" cy="100" r="5"/><circle cx="510" cy="130" r="5"/><circle cx="460" cy="150" r="5"/><circle cx="530" cy="90" r="5"/><circle cx="500" cy="170" r="5"/></g>
-      <g fill="none" stroke-width="1.5" stroke-dasharray="6 5"><ellipse cx="150" cy="135" rx="70" ry="60" stroke="#1c1a17"/><ellipse cx="340" cy="260" rx="80" ry="65" stroke="#a51c30"/><ellipse cx="495" cy="130" rx="60" ry="60" stroke="#726a5b"/></g>
-      <path d="M60 340 L540 340 M60 340 L60 60" stroke="#1c1a17" stroke-width="1.5" fill="none"/>
-    </symbol>
-
-    <symbol id="ill-chat" viewBox="0 0 600 400">
-      <rect width="600" height="400" fill="#faedda"/>
-      <path d="M80 90 h280 a16 16 0 0 1 16 16 v70 a16 16 0 0 1 -16 16 h-200 l-40 36 v-36 h-40 a16 16 0 0 1 -16 -16 v-70 a16 16 0 0 1 16 -16z" fill="none" stroke="#1c1a17" stroke-width="1.5"/>
-      <g fill="#b9b8ad"><rect x="104" y="118" width="200" height="8"/><rect x="104" y="140" width="140" height="8"/><rect x="104" y="162" width="180" height="8"/></g>
-      <path d="M520 220 h-280 a16 16 0 0 0 -16 16 v70 a16 16 0 0 0 16 16 h200 l40 36 v-36 h40 a16 16 0 0 0 16 -16 v-70 a16 16 0 0 0 -16 -16z" fill="#a51c30"/>
-      <g fill="#faedda"><rect x="250" y="248" width="220" height="8"/><rect x="250" y="270" width="160" height="8"/><rect x="250" y="292" width="200" height="8"/></g>
-    </symbol>
-
-    <symbol id="ill-jobs" viewBox="0 0 600 400">
-      <rect width="600" height="400" fill="#faedda"/>
-      <g stroke="#eed6aa" stroke-width="1.5"><path d="M60 110 H540 M60 180 H540 M60 250 H540 M60 320 H540"/></g>
-      <g fill="#b9b8ad"><rect x="110" y="70" width="240" height="10"/><rect x="110" y="140" width="180" height="10"/><rect x="110" y="210" width="260" height="10"/><rect x="110" y="280" width="200" height="10"/></g>
-      <g fill="none" stroke="#a51c30" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M66 76 l10 10 18 -20"/><path d="M66 216 l10 10 18 -20"/><path d="M66 286 l10 10 18 -20"/></g>
-      <rect x="64" y="134" width="24" height="24" fill="none" stroke="#1c1a17" stroke-width="1.5"/>
-      <g fill="#a51c30"><rect x="420" y="66" width="120" height="18"/><rect x="440" y="206" width="100" height="18"/><rect x="400" y="276" width="140" height="18"/></g>
-    </symbol>
-
-    <symbol id="ill-portrait" viewBox="0 0 400 500">
-      <rect width="400" height="500" fill="#faedda"/>
-      <circle cx="200" cy="190" r="90" fill="none" stroke="#1c1a17" stroke-width="1.5"/>
-      <path d="M60 470 a140 140 0 0 1 280 0" fill="none" stroke="#1c1a17" stroke-width="1.5"/>
-      <text x="200" y="222" text-anchor="middle" font-family="Newsreader, Georgia, serif" font-size="96" fill="#a51c30">K</text>
-    </symbol>
-  </defs>
-</svg>
-
-<header>
-  <div class="wrap util">
+<header class="top">
+  <div class="util">
     <ul>
-      <li id="today">Thursday, October 9, 2026</li>
+      <li id="today">Wednesday, October 28, 2026</li>
       <li>Chandigarh, India</li>
     </ul>
     <ul>
       <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
       <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
       <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
-      <li><a class="pdf" href="Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+      <li><a href="Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF ↓</a></li>
     </ul>
   </div>
 
-  <div class="wrap masthead">
-    <a class="logo" href="#top">Kartikey Shaurya</a>
+  <div class="masthead">
+    <h1><a href="#main">Kartikey Shaurya</a></h1>
     <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
   </div>
 
   <nav class="primary" aria-label="Sections">
     <ul>
-      <li><a href="#agents">Agents &amp; LLMs</a></li>
-      <li><a href="#search">Search &amp; Recommendation</a></li>
-      <li><a href="#data">Data &amp; Pipelines</a></li>
-      <li><a href="#public">Public Sector</a></li>
+      <li><a href="#summary">Summary</a></li>
       <li><a href="#experience">Experience</a></li>
-      <li><a href="#about">About</a></li>
-      <li><a class="cta" href="#hire">Hire me</a></li>
+      <li><a href="#skills">Skills</a></li>
+      <li><a href="#education">Education</a></li>
+      <li><a href="#projects">Projects</a></li>
+      <li><a href="projects/index.html">Case studies</a></li>
+      <li><a class="cta" href="mailto:kartikeyshaurya@gmail.com?subject=Hello%20Kartikey">Hire me</a></li>
     </ul>
   </nav>
 </header>
 
+<div class="page">
 <main id="main">
 
-  <!-- ========== LEAD ========== -->
-  <section class="wrap lead-grid" id="top">
-    <article class="lead hl">
-      <a href="#voice"><figure><svg class="ill" role="img" aria-label="Illustration: a crimson audio waveform"><use href="#ill-voice"/></svg></figure></a>
-      <p class="kicker">Agents &amp; LLMs <span class="fmt">Case study</span></p>
-      <h1><a href="#voice">The agent that answers the phone</a></h1>
-      <p class="dek">Freight runs on calls. At ValueLoads, voice-enabled AI agents now take them, understand what's being asked and finish the job, so dispatch staff handle exceptions instead of every ring.</p>
-      <p class="byline">By <b>Kartikey Shaurya</b> · Creed Infotech, 2025</p>
-    </article>
-
-    <aside class="rail hl" aria-labelledby="latest-h">
-      <h2 id="latest-h">Read the latest</h2>
-      <ul>
-        <li>
-          <a href="#rejara"><svg class="thumb" aria-hidden="true"><use href="#ill-agents"/></svg></a>
-          <div>
-            <h3><a href="#rejara">Agents that collect data and hand work to each other</a></h3>
-            <p>LangGraph agents on the Rejara platform, plus Pegasus and BERT fine-tunes.</p>
-          </div>
-        </li>
-        <li>
-          <a href="#lake"><svg class="thumb" aria-hidden="true"><use href="#ill-lake"/></svg></a>
-          <div>
-            <h3><a href="#lake">A 160 GB data lake stops being the bottleneck</a></h3>
-            <p>Writes 40–50% faster, storage down 20%, after a warehouse rebuild on Airflow.</p>
-          </div>
-        </li>
-        <li>
-          <a href="#anon"><svg class="thumb" aria-hidden="true"><use href="#ill-redact"/></svg></a>
-          <div>
-            <h3><a href="#anon">Third place for an anonymiser that hides names and faces</a></h3>
-            <p>DistilBERT for PII, YuNet for faces, in a West Bengal Government initiative.</p>
-          </div>
-        </li>
-      </ul>
-    </aside>
-  </section>
-
-  <!-- ========== NUMBERS ========== -->
-  <section class="band" aria-labelledby="numbers-h">
-    <div class="wrap">
-      <p class="kicker" id="numbers-h">By the numbers <span class="fmt">From shipped work</span></p>
-      <dl class="stats">
-        <div><dt>160 GB+</dt><dd><b>Data lake re-architected</b> on Airflow at Sapio Analytics.</dd></div>
-        <div><dt>+8–10%</dt><dd><b>Average driver income</b> after performance clustering went live.</dd></div>
-        <div><dt>−15%</dt><dd><b>Driver attrition</b> from the same model.</dd></div>
-        <div><dt>$10,000</dt><dd><b>AWS credits</b> awarded for an LLM job-assistance chatbot.</dd></div>
-        <div><dt>3rd</dt><dd><b>West Bengal Government</b> data-security initiative, Data Anonymizer.</dd></div>
-      </dl>
-    </div>
-  </section>
-
-  <!-- ========== ALL WORK ========== -->
-  <section class="wrap section" aria-labelledby="work-h">
-    <div class="sec-h">
-      <h2 id="work-h">All work</h2>
-      <a href="Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF ↓</a>
-    </div>
-
-    <div class="cols hl">
-      <div class="col" id="agents">
-        <h3>Agents &amp; LLMs</h3>
-        <ul>
-          <li><h4><a href="#voice">The agent that answers the phone</a></h4><p>Voice AI running freight operations at ValueLoads.</p></li>
-          <li><h4><a href="#support">Support that knows when not to answer</a></h4><p>Assistants for an ed-tech and a legal-services firm.</p></li>
-          <li><h4><a href="#rejara">Agents that collect data and hand work to each other</a></h4><p>LangChain and LangGraph on the Rejara platform.</p></li>
-          <li><h4><a href="#samarth">A job coach built from an LLM</a></h4><p>Personalised recommendations for a government skilling platform.</p></li>
-        </ul>
-      </div>
-
-      <div class="col" id="search">
-        <h3>Search &amp; Recommendation</h3>
-        <ul>
-          <li><h4><a href="#rejara">Recommendations straight out of Elasticsearch</a></h4><p>Pipelines that cut manual review time and sharpened insight.</p></li>
-          <li><h4><a href="#samarth">Matching workers to jobs at scale</a></h4><p>Job-matching recommenders for the Samarth platform.</p></li>
-          <li><h4><a href="#rejara">Summaries people trust</a></h4><p>Pegasus fine-tuned for conversation, BERT for topics.</p></li>
-        </ul>
-      </div>
-
-      <div class="col" id="data">
-        <h3>Data &amp; Pipelines</h3>
-        <ul>
-          <li><h4><a href="#lake">A 160 GB data lake stops being the bottleneck</a></h4><p>Neural Ocean: warehouse architecture on Airflow.</p></li>
-          <li><h4><a href="#lake">Finding PII before data leaves the building</a></h4><p>A detection pipeline for compliant internal sharing.</p></li>
-          <li><h4><a href="#samarth">Ingestion and MIS reporting that run themselves</a></h4><p>Pipelines behind the Samarth platform's analytics.</p></li>
-        </ul>
-      </div>
-
-      <div class="col" id="public">
-        <h3>Public Sector</h3>
-        <ul>
-          <li><h4><a href="#assam">Where to send the patrols</a></h4><p>Multi-year law-enforcement analysis for the Government of Assam.</p></li>
-          <li><h4><a href="#anon">Third place for an anonymiser that hides names and faces</a></h4><p>West Bengal Government data-security initiative.</p></li>
-          <li><h4><a href="#drivers">Drivers earn more, and stay</a></h4><p>Regression-driven clustering for a driver workforce.</p></li>
-        </ul>
-      </div>
-
-      <div class="col" id="oss">
-        <h3>Open Source &amp; Earlier</h3>
-        <ul>
-          <li><h4><a class="ext" href="https://github.com/kartikeyshaurya/SDV" target="_blank" rel="noopener">A self-driving car that learned by watching</a></h4><p>Behavioural cloning for steering and throttle on simulated tracks.</p></li>
-          <li><h4><a class="ext" href="https://github.com/kartikeyshaurya/Disaster_management_sysytem" target="_blank" rel="noopener">Sorting crisis messages in real time</a></h4><p>NLP classifier with a live prediction dashboard.</p></li>
-          <li><h4><a class="ext" href="https://github.com/kartikeyshaurya/fire_prediction" target="_blank" rel="noopener">Spotting fire before the alarm does</a></h4><p>CNN image detection for early hazard alerts.</p></li>
-          <li><h4><a class="ext" href="https://github.com/kartikeyshaurya/Sentiments_and_deep_Learning" target="_blank" rel="noopener">Sentiment analysis, trained and served on SageMaker</a></h4><p>End-to-end on AWS, 92% accuracy.</p></li>
-          <li><h4><a class="ext" href="https://github.com/kartikeyshaurya/deepseek_from_scratch" target="_blank" rel="noopener">DeepSeek, rebuilt in notebooks</a></h4><p>Working through the architecture piece by piece.</p></li>
-        </ul>
-      </div>
+  <section id="summary" aria-labelledby="summary-h">
+    <h2 id="summary-h">Summary</h2>
+    <p class="lede">Machine Learning &amp; AI Engineer with experience delivering <b>production-grade LLM applications</b>, <b>recommendation systems</b> and <b>high-performance data pipelines</b>. Strong in <b>NLP (Transformers/LLMs)</b>, <b>MLOps</b> and <b>search systems</b>. Proven impact across government and enterprise environments, focused on measurable outcomes, reliability and scale.</p>
+    <p class="contact"><a href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a> · <a href="tel:+917646032608">+91 76460 32608</a></p>
+    <div class="toolbar">
+      <p class="hint">Every numbered point below opens into a longer write-up: the problem, what I built, and what changed.</p>
+      <button type="button" id="toggle-all" aria-pressed="false">Expand all</button>
     </div>
   </section>
 
   <!-- ========== EXPERIENCE ========== -->
-  <section class="wrap section" id="experience" aria-labelledby="exp-h">
-    <div class="sec-h">
-      <h2 id="exp-h">Experience</h2>
-      <a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn ↗</a>
-    </div>
+  <section id="experience" aria-labelledby="exp-h">
+    <h2 id="exp-h">Experience</h2>
 
-    <div class="roles">
-      <article class="role">
-        <p class="when">May 2025 — <span class="now">Present</span> · Chandigarh</p>
+    <article class="job">
+      <div class="job-head">
         <h3>Machine Learning Engineer</h3>
-        <p class="org">Creed Infotech</p>
-        <ul>
-          <li><b>Lead the vision, strategy and execution</b> of data-science and AI initiatives, aligned with core business objectives.</li>
-          <li>Designed and deployed AI support chatbots for Vnaya and Virtue Legal Services.</li>
-          <li>Built and deployed voice-enabled AI agents for ValueLoads, automating operational workflows.</li>
-        </ul>
-      </article>
+        <span class="when">May 2025 – Present</span>
+        <span>Creed Infotech</span>
+        <span class="where">Chandigarh, Punjab</span>
+      </div>
+      <ol class="points">
+        <li>
+          <details>
+            <summary>Led the vision, strategy and execution of <b>Data Science and AI initiatives</b>, aligning advanced analytics and AI solutions with core business objectives.</summary>
+            <div class="deep">
+              <h4>Context</h4>
+              <p>Creed Infotech builds software for clients in logistics, legal services and education. AI work there arrives as many separate client requests, and each has to justify itself in business terms.</p>
+              <h4>What I do</h4>
+              <p>I own AI delivery end to end: choosing which problems are worth a model, setting the architecture, and shipping. The pattern that runs through most of the work is that <b>the model advises and deterministic code decides</b>. LLMs draft, extract and summarise; policy engines and humans approve anything with consequences.</p>
+              <p>Much of the recent work is for a US freight brokerage: shipper and carrier verification, inbox automation, an MCP server over the TMS, and a load board for voice agents. The <a href="projects/index.html">case studies</a> cover each one in detail.</p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary>Designed and deployed <b>AI-powered support chatbots</b> for <b>Vnaya</b> and <b>Virtue Legal Services</b>, improving customer support automation and response efficiency.</summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Vnaya teaches children online. Virtue Legal Services advises clients where a wrong answer has consequences. Both had support queues growing faster than their teams, and both needed answers drawn from what the company actually says, not from what a model guesses.</p>
+              <h4>Approach</h4>
+              <p>Retrieval-augmented assistants grounded in each company's own documents and policies, so every reply can be traced to a source. The two deployments are separate but share tooling, so an improvement to one ships to both.</p>
+              <h4>What mattered</h4>
+              <p>For the legal assistant the key feature is restraint. It knows which questions it must decline and route to a person. Evaluation sets were built from real tickets before launch, so the first users were not the test set.</p>
+              <p class="stack"><b>Stack:</b> RAG, LangChain, OpenAI API, Pinecone, FastAPI</p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary>Built and deployed <b>voice-enabled AI agents</b> for <b>ValueLoads</b>, enabling intelligent voice interactions and automation of operational workflows.</summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Freight runs on phone calls: a driver about a pickup, a customer asking where a load is, a broker confirming a rate. Each one used to land on a person.</p>
+              <h4>Approach</h4>
+              <p>Multi-tenant phone agents on Twilio and Pipecat that listen, reason over the live call with a language model, and speak back, with latency kept low enough that it feels like a call rather than a form. The agents call the company's operational tools directly, so a conversation ends with the record updated, not with a ticket for someone else. Post-call extraction leaves structured data behind, and prepaid billing and outbound campaigns are built in.</p>
+              <h4>What mattered</h4>
+              <p>The unglamorous parts: a clean hand-off to a human when confidence drops, and observability on every turn so a bad call can be replayed and diagnosed. Details in <a href="projects/valueloads-voice.html">the case study</a>.</p>
+              <p class="stack"><b>Stack:</b> LLM agents, Twilio, Pipecat, speech in and out, OpenAI API, FastAPI, Docker</p>
+            </div>
+          </details>
+        </li>
+      </ol>
+<!-- PROJECTS:START (generated by _build/build_projects.py, do not edit by hand) -->
+    <div class="work">
+      <p>Projects, 2025 to present. Open any one for the problem and approach; the case study has the architecture and trade-offs.</p>
+      <h4>Freight &amp; Logistics AI</h4>
+      <ol class="points">
+        <li>
+          <details>
+            <summary><b>Shipper Approval Agent</b> — Automated shipper verification: AI reviews advise, a deterministic policy engine decides, humans confirm every rejection. <span class="status">Pilot</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Before a broker can move freight for a new shipper, the accounts receivable team has to verify the company: state business registration, business identity, credit and insurance standing, public presence, recorded phone calls to the registered numbers, and a credit application. The team did this by hand from a written procedure, pulling evidence from many sources and recording every step.</p>
+              <h4>Approach</h4>
+              <p>The first thing I noticed was that the obvious design, an agent that reads the evidence and outputs &quot;approve&quot; or &quot;reject&quot;, would never be signed off. Finance has to defend every approval, and a language model gives different answers on different runs over the same pages. So I drew the trust boundary before writing any code: <b>the model can read messy evidence and give a structured opinion, but it can never set a case status.</b> A pure, versioned policy function makes the call from verified facts, and it never sees model text.</p>
+              <p class="stack"><b>For:</b> Creed Infotech, for a US freight brokerage · <b>Role:</b> Primary engineer: architecture, backend, AI layer, operator console<br><b>Stack:</b> Python, FastAPI, PostgreSQL, MongoDB, MinIO, LangGraph, Gemini, Langfuse, Twilio Voice, React · <a href="projects/shipper-approval-agent.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><b>Valora Broker Agent</b> — Multi-agent assistant inside a freight TMS: live answers, and every write waits for the broker&#x27;s approval. <span class="status">Pre-release, in testing</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Freight brokers on the ValueLoads TMS portal work across many screens: shipments, shippers, carriers, the load board, aging, claims and reports. The shipment is the hub that ties them together, so a simple question like &quot;which of my loads deliver today, and is that shipper over their credit limit?&quot; means clicking through several pages and stitching the answer together by hand.</p>
+              <h4>Approach</h4>
+              <p>I did not start with prompts. I started by mapping the API: a generated reference, a live probe of every read route a broker can reach, and one document per portal page that maps each column to the response field it comes from. That evidence showed me the API could not be trusted by its spec. Some read requests changed state, some routes failed, and identifiers came in more than one form. It also meant every tool I wrote could point back to something I had observed.</p>
+              <p class="stack"><b>For:</b> Creed Infotech, for ValueLoads · <b>Role:</b> Sole engineer: API research, architecture, backend, frontend, deployment<br><b>Stack:</b> Python, FastAPI, PostgreSQL, Redis, MinIO, OpenAI Responses API, Langfuse, React, TypeScript, Docker Compose · <a href="projects/broker-agent.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><b>ValueLoads AI Voice Platform</b> — Multi-tenant AI phone agents on Twilio and Pipecat, with prepaid billing, campaigns and post-call extraction. <span class="status">Pilot</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>People who work the phones at freight brokerages and on sales teams spend much of the day on repetitive calls: carriers asking about loads, leads that need qualifying, follow-ups that never get logged. The calls follow a pattern, but every business has its own script, its own data and its own idea of a good outcome.</p>
+              <h4>Approach</h4>
+              <p>The first thing I noticed was that the platform had two workloads that behave nothing alike. The dashboard is ordinary request and response CRUD: tenants, agents, campaigns, billing. A live call is a long-running audio pipeline that must never block, because a 200 millisecond stall is something the caller hears. In one process, a slow analytics query could stutter a conversation. So I split it into a Django control plane that owns configuration and a separate FastAPI and Pipecat voice service that owns calls, with one database, separate schemas and a narrow admin API between them.</p>
+              <p class="stack"><b>For:</b> Creed Infotech, for ValueLoads · <b>Role:</b> Lead engineer: backend, voice runtime, deployment, security and latency audits<br><b>Stack:</b> Django, Django REST Framework, FastAPI, Pipecat, Twilio, OpenAI, Deepgram, Cartesia, PostgreSQL, React · <a href="projects/valueloads-voice.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><b>Business Data Collector</b> — A lookup service that gives an AI verification system one stable contract over many inconsistent public sources. <span class="status">Internal service, deployed</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Verifying a new shipper means checking its state business registration, its business identity, its public listings and its own website. Every one of those sources works differently. Some have official APIs or open-data portals, some only have a web search form, some are single-page apps, and some are behind a paywall. Every US state runs its registry its own way.</p>
+              <h4>Approach</h4>
+              <p>The first decision was about where this code should live. The lookup layer was the part most likely to break and the part with the most compliance exposure, so I took it out of the decision system entirely and gave it its own service with clean JSON contracts. The agent now asks a question and gets back one of four answers: found, not found, blocked, or error. If a source is replaced with a licensed API tomorrow, the agent does not change.</p>
+              <p class="stack"><b>For:</b> Creed Infotech, for a US freight brokerage · <b>Role:</b> Main author: service design, provider integrations, caching, deployment<br><b>Stack:</b> Python, FastAPI, PostgreSQL, SQLAlchemy, Redis, RQ, Docker Compose, GitLab CI · <a href="projects/business-data-collector.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><b>TMS MCP Server</b> — MCP tools for exploring a very large freight TMS API, and a sign-in bridge for safe live calls. <span class="status">Internal service</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>The brokerage&#x27;s in-house TMS exposes a very large, inconsistently named API. Its generated reference document is far too big for any coding agent to read into context, so engineers and agents spent their time searching through it by hand, and were tripped up by near-duplicate routes and the API&#x27;s own query conventions.</p>
+              <h4>Approach</h4>
+              <p>I started by looking at the kind of questions people actually asked. They were about exact identifiers: which route updates a shipper&#x27;s credit limit, what does it take, which permission guards it. That ruled out the obvious answer of chunking the document and doing vector search. The reference is generated with a fixed shape, so <b>a structural parser with lexical ranking</b> gives deterministic, explainable results in milliseconds, with no embedding model and nothing to re-index.</p>
+              <p class="stack"><b>For:</b> Creed Infotech, internal tooling for a US freight brokerage&#x27;s TMS · <b>Role:</b> Sole engineer: parser, MCP server, sign-in bridge, deployment<br><b>Stack:</b> Python, MCP Python SDK, OAuth 2.1, SQLite, uv, Docker, nginx · <a href="projects/tms-mcp-server.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><b>FreightSense</b> — Multi-tenant AI back office for freight: invoices, call QA and AR/AP through one scored, reviewable pipeline. <span class="status">MVP</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Freight brokers run a lot of manual back-office work: reviewing broker and carrier calls for quality and compliance, checking carrier invoices against rate sheets, bills of lading and proofs of delivery, chasing late payers, and matching lump-sum payments to open invoices. Each check on its own is simple. &quot;Does subtotal plus tax equal the total?&quot; is not a hard question.</p>
+              <h4>Approach</h4>
+              <p>What I noticed first was that the use cases differed at the input and almost nowhere else. Every one of them needed to ingest something, process it, score it, maybe send it to a person, and feed the correction back. So instead of 41 pipelines I built one spine (ingest, process, score, review, analyse, retrain) and pushed all the variation into the workflow definition. Every step and every aggregate returns the same result shape: a tree of parent and child results. That gave me one persistence routine, one review queue, one analytics model and one UI renderer for every domain.</p>
+              <p class="stack"><b>For:</b> Internal product for freight back-office operations · <b>Role:</b> Sole engineer: product spec, architecture, backend, AI layer, frontend<br><b>Stack:</b> FastAPI, SQLAlchemy, PostgreSQL + pgvector, Celery, Redis, Kafka, LangGraph, OpenAI, Langfuse, React + TypeScript · <a href="projects/freightsense.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><b>Carrier Vetting Agent</b> — Carrier-vetting SOP as five LangGraph workflows: rules decide, the LLM can only lower a verdict. <span class="status">Prototype</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Before a freight brokerage gives a carrier a load, its vetting team checks that carrier by hand against FMCSA and several commercial carrier-safety platforms. Then it applies a dense procedure: hard blocks, exceptions, authority-age thresholds that vary by equipment type, complaint checks, and for every load a phone call in which the carrier itself must state details such as the VIN and the driver&#x27;s licence. Fraud in this space (double brokering, identity theft, stolen loads) is expensive, so the stakes are high and the work is slow.</p>
+              <h4>Approach</h4>
+              <p>The first thing I noticed was that the hard question was not how to get an LLM to vet carriers but where it must have no say. Approving a carrier is a fraud-prevention decision. It has to be deterministic, traceable to a specific clause of the procedure, versioned and regression-tested. A prompt can drift silently between model versions and can&#x27;t be unit-tested. So every rule became a versioned YAML expression run by a small sandboxed evaluator, each tagged with the clause it implements and backed by a pair of test fixtures that trigger it and clear it.</p>
+              <p class="stack"><b>For:</b> Client project for a US freight brokerage&#x27;s carrier-vetting team · <b>Role:</b> Sole engineer: design, backend, agents, voice agent, console<br><b>Stack:</b> Python, FastAPI, LangGraph, OpenAI, Cartesia, PostgreSQL, Redis, Playwright, Langfuse, React + TypeScript · <a href="projects/carrier-vetting.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><b>Check Reader</b> — A privacy-hardened API that reads routing and account numbers from checks and bank documents with a vision model. <span class="status">MVP</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>When a carrier or vendor wants to be paid by direct deposit, they send proof of their bank account. Someone in accounts payable has to read the routing and account numbers off a check image, a void cheque printout, a direct-deposit form or a bank letter, and a single wrong digit sends a payment to the wrong account.</p>
+              <h4>Approach</h4>
+              <p>I started from an exploratory notebook and asked what a dedicated OCR engine would and would not handle. It would do well on a clean check and badly on everything else the team actually received. A general vision model with a carefully written prompt could cover all the formats and also read the account holder and bank name. The risk was a model that misreads a digit without saying so, so the rest of the design is about catching that.</p>
+              <p class="stack"><b>For:</b> Creed Infotech, for a US freight brokerage · <b>Role:</b> Sole engineer: prompt design, API, privacy hardening, tests<br><b>Stack:</b> Python, FastAPI, OpenAI Responses API, OpenAI Files API, Pydantic, Docker, pytest · <a href="projects/check-reader.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><b>Load Search Service</b> — In-memory Polars load board that returns matches plus the next question for a voice agent to ask. <span class="status">MVP</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Carriers call a freight broker with questions like &quot;got a reefer out of Illinois?&quot;. A voice agent answering that call has to search the live load board in well under a second, because every tool call is dead air on the phone. Callers also give details a piece at a time (&quot;out of Chicago... reefer... next Tuesday&quot;), so the search has to work on any subset of fields.</p>
+              <h4>Approach</h4>
+              <p>I started from the shape of the upstream data rather than from a database. The broker&#x27;s API returns the whole active board in one response, and it is small enough to hold in memory comfortably. A database on the query path would add a sync job, a network hop on every voice turn and index tuning, without adding any capability. So the service keeps the entire board in process as a Polars DataFrame and rebuilds it from upstream every 60 seconds. The upstream stays the source of truth.</p>
+              <p class="stack"><b>For:</b> Creed Infotech, for ValueLoads · <b>Role:</b> Sole engineer: design, implementation, deployment<br><b>Stack:</b> Python, FastAPI, Polars, Pydantic, Prometheus, Docker, pytest · <a href="projects/load-search.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><b>Broker Inbox AI</b> — LangGraph email pipeline that links each message to a shipment and drafts the TMS action for review. <span class="status">Prototype</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>A freight broker&#x27;s day runs on email: tenders, carrier quotes, &quot;book it&quot;, check calls, breakdowns, proofs of delivery, rate confirmations. Almost every status change on a load is triggered by one of these messages, and each one has to be matched to the right load in the TMS and turned into an action by hand. The TMS has no idea which email belongs to which load.</p>
+              <h4>Approach</h4>
+              <p>I started by separating what is known from what is open-ended. Ingest, understand, link and draft is a fixed workflow, so it should be a graph owned by code with LLMs inside specific nodes, not an agent choosing its own steps for every email. The rule of thumb I wrote down: a known flow is a graph, an open-ended request is an agent, and a human gate is an interrupt.</p>
+              <p class="stack"><b>For:</b> Creed Infotech, for ValueLoads · <b>Role:</b> Sole engineer: design docs, pipeline, agents, evals<br><b>Stack:</b> Python, FastAPI, LangGraph, LangChain, Cloudflare Workers AI, Llama 3.3 70B, SQLite, LangSmith, React · <a href="projects/broker-inbox-ai.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+      </ol>
+      <h4>Platforms &amp; Products</h4>
+      <ol class="points">
+        <li>
+          <details>
+            <summary><b>Relay</b> — Employee cab platform: policy-checked booking, dispatch, live GPS, SOS and vendor billing in Rust and Flutter. <span class="status">Pilot-stage MVP</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Companies in India that run night shifts are responsible for getting every employee home safely. That comes with rules: escorts for women on late rides, approval chains, cost-centre budgets, vendor rate cards, and a record of every trip that someone can audit later. In most places this still runs on spreadsheets and phone calls to vendors.</p>
+              <h4>Approach</h4>
+              <p>The first thing I noticed was that the hard part was not any single screen. It was agreement. A booking, the trip it rides on, the budget it reserved and the message telling the driver all have to agree, and in a safety product they have to agree even when something fails halfway. That pointed me away from microservices. One company&#x27;s fleet is a modest load, and what matters is that a state change and its side effects commit together. <b>I built a modular monolith in Rust: one binary, one module per domain, and every state change, its audit event and its queued side effects written in a single Postgres transaction.</b></p>
+              <p class="stack"><b>For:</b> Creed Infotech, internal product for corporate employee transport · <b>Role:</b> Lead engineer: architecture, Rust backend, both Flutter apps<br><b>Stack:</b> Rust (Actix Web, Tokio), PostgreSQL + PostGIS, sqlx, WebSockets, React, TanStack Query, Flutter, S3-compatible storage, Docker, Terraform on AWS · <a href="projects/relay-fleet.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><b>BulkMailer</b> — Multi-tenant email platform with queued sends, provider failover, reply threading and a live Outlook mirror. <span class="status">In production</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Sales, recruiting and operations teams across several client domains needed to send personalised campaigns and one-off bulk mail from their own addresses, see what happened to every recipient, and handle the replies, without paying per seat for a marketing suite or living inside Outlook.</p>
+              <h4>Approach</h4>
+              <p>I was part of the team that built BulkMailer. My part was the layer that decides whether mail actually leaves and whether anything gets lost: high-availability hardening, the durable Outlook inbound pipeline, send-rate limiting and provider warmup, partitioning for the log tables, Outlook sync and sign-in fixes, and the architecture, database and reliability documentation.</p>
+              <p class="stack"><b>For:</b> Creed Infotech, for internal and client sending · <b>Role:</b> Part of the team: reliability, high availability, Outlook sync, documentation<br><b>Stack:</b> Python, FastAPI, PostgreSQL, pgbouncer, RabbitMQ, Redis, MinIO, React, TypeScript, Microsoft Graph · <a href="projects/bulkmailer.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><b>AI-native project manager</b> — Multi-tenant project manager with a governed AI layer and an MCP server for ChatGPT and Claude. <span class="status">MVP</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Product teams split their work across a tracker, a chat tool, a bug form and a slide deck for leadership. Each tool has its own idea of who can see what, and the weekly summary for the CEO gets assembled by hand from all of them.</p>
+              <h4>Approach</h4>
+              <p>I started from the write path. Tasks get created by the UI, CSV import, ticket triage, automations, the AI assistant and MCP, and every one of those needs the same side effects: field history, activity log, notifications, watchers, webhooks, search re-indexing and a real-time broadcast. If each entry point did its own writes, each would forget something. <b>So I wrote a short design document that makes one task service the only writer</b>, and hung workflow rules, custom fields and dependency checks off its extension points. That is also why the app is a modular monolith: a task write touching ten concerns is one transaction there, and a saga anywhere else.</p>
+              <p class="stack"><b>For:</b> Solo build · <b>Role:</b> Sole engineer: architecture, backend, frontend, AI layer, MCP server<br><b>Stack:</b> FastAPI, PostgreSQL + pgvector, Redis, Celery, React, TypeScript, TipTap, OpenAI, MCP, OAuth 2.1 · <a href="projects/project-manager-mcp.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><b>Tutoring operations platform</b> — Staff and family portals on one shared database, running a tutoring company from first lead to tutor pay. <span class="status">In active development</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>A tutoring business runs on hand-offs. A lead becomes a demo class, the demo becomes an enrolment, and the enrolment needs a payment, a tutor, a weekly schedule, quality audits, progress reports and finally tutor pay. Without one system those steps live in spreadsheets, meeting accounts and payment dashboards, and nobody can see a student&#x27;s whole journey.</p>
+              <h4>Approach</h4>
+              <p>I was part of a team of several developers. My own work was on the deployment side: environment configuration and database migration fixes. That work made me learn how the two apps really fit together, because they deploy separately but write to the same database, both run scheduled jobs, and share one real-time server.</p>
+              <p class="stack"><b>For:</b> Creed Infotech, for an online tutoring company · <b>Role:</b> Part of the team: deployment, environment configuration, database migrations<br><b>Stack:</b> Node.js, Express, MySQL, React, Socket.IO, Zod, node-cron, Jitsi, nginx, Docker Compose · <a href="projects/tutoring-ops-platform.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+      </ol>
+      <h4>Applied ML &amp; AI Infrastructure</h4>
+      <ol class="points">
+        <li>
+          <details>
+            <summary><b>Speech-to-Text API</b> — Drop-in OpenAI-compatible transcription API running Parakeet on CPU, with durable jobs for hours-long audio. <span class="status">Production-ready MVP for a single VM</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Hosted transcription APIs charge per minute and send audio off the premises. Self-hosting on GPUs is expensive to keep running around the clock, and this workload is mostly steady batch work: meetings, calls and recordings that run from a few minutes to several hours, where nobody needs the answer in milliseconds.</p>
+              <h4>Approach</h4>
+              <p>The first thing I noticed was that the workload was bound by throughput, not latency. Most audio is batch work where minutes of turnaround are fine. That made CPU inference a real option: several core-pinned instances of Parakeet in ONNX Runtime on one large VM, with a predictable cost and no GPU scheduling. I treated the throughput estimate as a hypothesis, not a fact, and wrote a benchmark tool so sizing gets settled on the target hardware before anyone commits to it.</p>
+              <p class="stack"><b>For:</b> Solo build · <b>Role:</b> Sole engineer: model serving, audio pipeline, API, queueing, developer console<br><b>Stack:</b> Python, FastAPI, NVIDIA Parakeet on ONNX Runtime, Arq and Redis, PostgreSQL, MinIO (S3 API), ffmpeg, React and TypeScript, Caddy, Docker Compose · <a href="projects/speech-to-text-api.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><b>Face Verification</b> — Selfie-to-licence face matching on CPU, with passive liveness and a guarded LLM second opinion. <span class="status">MVP, awaiting calibration on real traffic</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Onboarding flows that need an identity check have to confirm that the person holding the phone is the person on the licence. Licence portraits are tiny, printed, laminated, often glary and sometimes years old. Selfies from the phone app arrived rotated sideways with no orientation metadata. Off-the-shelf face matching on those raw inputs produces borderline scores.</p>
+              <h4>Approach</h4>
+              <p>I started by deciding not to train anything. Face detection, recognition and anti-spoofing are well covered by mature open models, and there was no labelled licence-and-selfie dataset to train on. That moved the problem away from modelling and towards inputs and calibration: make what the models see as clean as possible, and be honest about what the scores mean.</p>
+              <p class="stack"><b>For:</b> Creed Infotech, for an identity-onboarding flow · <b>Role:</b> Sole engineer: model pipeline, API, evaluation tooling, packaging<br><b>Stack:</b> Python, FastAPI, InsightFace (SCRFD and ArcFace), ONNX Runtime, MiniFASNet anti-spoofing, PyTorch (CPU), OpenCV, OpenAI vision model with structured outputs, Docker · <a href="projects/face-verification.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><b>Hybrid Search RAG</b> — Document Q&amp;A that fuses BM25 and vector search, grades retrieved chunks, and ships as a metered API. <span class="status">Production-style MVP</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Teams have internal documents (PDFs, Markdown, text files) and want a chatbot that answers from them without making things up. Two failures come up again and again. Dense vector search misses exact terms like product codes, acronyms and error strings. And a model handed loosely related passages will answer confidently anyway.</p>
+              <h4>Approach</h4>
+              <p>We started from the two failure modes and treated them as separate problems. For retrieval misses, we ran keyword and semantic search together: dense embeddings for paraphrase, BM25 sparse vectors for exact tokens. The real question was how to merge them. A weighted sum of scores needs normalisation and a tuned weight per corpus, because cosine similarity and BM25 scores live on different scales. <b>Reciprocal Rank Fusion</b> combines the lists by rank instead, so it needs no tuning. Qdrant can store both vectors on the same point and fuse them on the server, which gave us hybrid search in one query and one datastore instead of running a separate search engine.</p>
+              <p class="stack"><b>For:</b> Built with a colleague · <b>Role:</b> Co-developer, built with a colleague: retrieval, RAG workflow, API and admin portal<br><b>Stack:</b> Python, FastAPI, LangGraph, Qdrant, BM25 (FastEmbed), OpenAI embeddings and GPT-4o mini, PostgreSQL, Redis, React and Ant Design, Docker Compose · <a href="projects/hybrid-search-rag.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><b>Brain Response Studio</b> — A serving system and 3D cortex viewer for Meta&#x27;s TRIBE v2 brain-response model, on one GPU. <span class="status">Working prototype, runs locally</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Meta FAIR released TRIBE v2, a research model that predicts fMRI brain activity at about twenty thousand points on the cortex, one frame per second, from video, audio or text. It is released for non-commercial use and ships as a Python library with no product around it. Running it means a gated model download, chaining several large foundation models, tuning GPU memory, and writing NumPy code to make sense of a matrix with twenty thousand columns.</p>
+              <h4>Approach</h4>
+              <p>The first constraint was memory. TRIBE v2 chains V-JEPA 2 for video, Wav2Vec-BERT for audio, LLaMA 3.2 for text and WhisperX for transcription, and the video encoder alone didn&#x27;t fit on an 8 GB GPU at full precision. I didn&#x27;t want to fork a research library that is still changing, or require bigger hardware, so I applied a few small, documented runtime patches when the model loads: half precision for the video encoder, equal-length windows for long audio so attention memory stays bounded, and reuse of the encoder output when consecutive frames are the same. Each patch is narrow and can be switched off on its own.</p>
+              <p class="stack"><b>For:</b> Internal R&amp;D tool · <b>Role:</b> Sole engineer: model serving, media pipeline, API, 3D visualisation (the TRIBE v2 model is Meta&#x27;s)<br><b>Stack:</b> Python, FastAPI, PyTorch, Meta TRIBE v2 (with V-JEPA 2, Wav2Vec-BERT, LLaMA 3.2), PostgreSQL, ffmpeg, nilearn, React and TypeScript, three.js · <a href="projects/brain-response-studio.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary><b>Inkstone</b> — Offline desktop PDF editor with local AI redaction that removes data from the file, not just hides it. <span class="status">Pre-1.0 desktop release</span></summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>People who handle intake forms, HR files, medical records and legal paperwork need to remove ID numbers, card numbers and names before they share a PDF. The usual options are a cloud service, which means uploading the very data you are trying to protect, or a black box drawn over the text, which leaves the text selectable and extractable underneath.</p>
+              <h4>Approach</h4>
+              <p>I set four constraints before writing the editor: fully offline, usable with no Python installed, never modify the source file, and never report a number that was not measured. Almost every later decision traces back to one of those.</p>
+              <p class="stack"><b>For:</b> Personal project · <b>Role:</b> Solo: design port, architecture, engineering, packaging<br><b>Stack:</b> Electron, React, pdf.js, pdf-lib, Python, Microsoft Presidio, spaCy, tesseract.js, Node crypto, electron-builder · <a href="projects/inkstone.html">Case study →</a></p>
+            </div>
+          </details>
+        </li>
+      </ol>
+    </div>
+<!-- PROJECTS:END -->
+    </article>
 
-      <article class="role">
-        <p class="when">Jul 2024 — May 2025 · Chandigarh</p>
+    <article class="job">
+      <div class="job-head">
         <h3>Data Scientist</h3>
-        <p class="org">Primotech</p>
-        <ul>
-          <li>Architected and deployed <b>LLM agents with LangChain and LangGraph</b> on the Rejara platform: autonomous data collection and inter-agent collaboration.</li>
-          <li>Fine-tuned Pegasus for conversational summarisation and BERT for topic classification; built Elasticsearch recommendation pipelines.</li>
-          <li>Developed scalable microservices and orchestration workflows across user segments.</li>
-        </ul>
-      </article>
+        <span class="when">Jul 2024 – May 2025</span>
+        <span>Primotech</span>
+        <span class="where">Chandigarh, Punjab</span>
+      </div>
+      <ol class="points">
+        <li>
+          <details>
+            <summary>Architected and deployed <b>LLM-driven agents</b> using <b>LangChain</b> and <b>LangGraph</b> on the Rejara platform, enabling autonomous data collection and inter-agent collaboration.</summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Rejara needed to gather and process user data across long, multi-step tasks without a person driving each step.</p>
+              <h4>Approach</h4>
+              <p>A set of cooperating agents: one collects, another validates, another condenses. LangGraph gives each agent explicit state, so long-running tasks can pause, resume and be inspected instead of being restarted from scratch when something goes wrong.</p>
+              <p class="stack"><b>Stack:</b> LangGraph, LangChain, LangSmith, OpenAI API</p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary>Fine-tuned <b>Pegasus</b> (conversational summarisation) and <b>BERT</b> (topic classification); built <b>Elasticsearch</b>-based recommendation pipelines, reducing manual review time and improving insight accuracy.</summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Reviewers were reading raw conversations to work out what mattered. That was slow, and the insights depended on who did the reading.</p>
+              <h4>Approach</h4>
+              <p>Pegasus fine-tuned to summarise conversations, BERT fine-tuned to tag topics. Their outputs are indexed in Elasticsearch, and recommendation pipelines serve the relevant items straight from the index, so reviewers start from a ranked, summarised view.</p>
+              <h4>Result</h4>
+              <p>Less manual review time, and more consistent and accurate insights for the people acting on them.</p>
+              <p class="stack"><b>Stack:</b> PyTorch, Hugging Face Transformers, Pegasus, BERT, Elasticsearch</p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary>Developed scalable <b>microservices</b> and orchestration workflows, improving agent intelligence and platform adaptability across user segments.</summary>
+            <div class="deep">
+              <h4>Approach</h4>
+              <p>Each agent runs as its own microservice with its own scaling profile, and orchestration workflows connect them. A new user segment could get different agent behaviour by changing the workflow, without rewriting the agents.</p>
+              <p class="stack"><b>Stack:</b> FastAPI, Docker, CI/CD, workflow orchestration</p>
+            </div>
+          </details>
+        </li>
+      </ol>
+    </article>
 
-      <article class="role">
-        <p class="when">Aug 2022 — Jul 2024 · Mumbai</p>
+    <article class="job">
+      <div class="job-head">
         <h3>Machine Learning Engineer</h3>
-        <p class="org">Sapio Analytics</p>
-        <ul>
-          <li>Partnered with the <b>Government of Assam</b> on multi-year law-enforcement analysis for patrol planning.</li>
-          <li>Driver performance clustering: income up 8–10%, attrition down about 15%.</li>
-          <li>LLM job-assistance chatbot with personalised recommendations; $10,000 in AWS credits.</li>
-          <li>Optimised a 160 GB+ data lake: writes up 40–50%, storage down 20%, response times 10–20% faster.</li>
-          <li>PII detection pipeline for compliant, secure data sharing.</li>
-        </ul>
-      </article>
-    </div>
-
-    <p class="edu">
-      <span><b>B.Tech, Computer Science Engineering</b> — Lovely Professional University, 2019–2023, CGPA 7.7/10</span>
-      <span><b>Deep Learning Nanodegree</b> — Udacity, Bertelsmann scholarship</span>
-    </p>
+        <span class="when">Aug 2022 – Jul 2024</span>
+        <span>Sapio Analytics</span>
+        <span class="where">Mumbai, Maharashtra</span>
+      </div>
+      <ol class="points">
+        <li>
+          <details>
+            <summary>Partnered with the <b>Assam Government</b> to analyse multi-year law enforcement patterns, informing more efficient patrol planning and resource allocation.</summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Patrol and resource decisions were being made without a clear picture of where and when incidents actually happened over time.</p>
+              <h4>Approach</h4>
+              <p>Working directly with the government, I analysed multi-year law-enforcement data: where incidents concentrated, when they recurred, and how that shifted year to year.</p>
+              <h4>Result</h4>
+              <p>The output was a set of findings the government could act on rather than a model for its own sake. It informed patrol planning and how resources were allocated across the state.</p>
+              <p class="stack"><b>Stack:</b> Python, spatio-temporal analysis, clustering, dashboards</p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary>Built regression-driven driver performance clustering, increasing average driver income by <b>8–10%</b> and reducing attrition by <b>~15%</b>.</summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Incentives and routing were set for an "average driver" who did not really exist, so they suited almost nobody, and drivers left.</p>
+              <h4>Approach</h4>
+              <p>Regression models captured what drove each driver's earnings, and clustering on those signals split the workforce into groups by how they actually drove and earned. Incentives and routing were then set per group.</p>
+              <h4>Result</h4>
+              <p><b>Average driver income up 8–10%</b> and <b>attrition down about 15%</b>. Attrition was the number the business cared about most.</p>
+              <p class="stack"><b>Stack:</b> Scikit-learn, regression, clustering, PostgreSQL</p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary>Created an <b>LLM-based job assistance chatbot</b> integrated with personalised recommendations; recognised with <b>$10,000 in AWS credits</b>.</summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>On the Samarth government skilling platform, workers had to search job listings that did not match how they described themselves.</p>
+              <h4>Approach</h4>
+              <p>A chatbot that takes plain-language questions and answers with openings matched to the worker's profile, backed by job-matching recommenders. I also improved the data ingestion and MIS reporting pipelines behind it.</p>
+              <h4>Result</h4>
+              <p>The work was recognised with <b>$10,000 in AWS credits</b>.</p>
+              <p class="stack"><b>Stack:</b> LLMs, recommenders, AWS, data pipelines</p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary>Optimised a <b>160 GB+ internal data lake</b>: improved write throughput <b>40–50%</b>, reduced storage footprint <b>20%</b> and improved response time <b>10–20%</b>.</summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Analysts worked on top of Neural Ocean, a 160 GB+ internal data lake that was slow to write to and expensive to keep.</p>
+              <h4>Approach</h4>
+              <p>I rebuilt it as a layered warehouse on Airflow (raw, cleaned, modelled), with each hop owned by a DAG so lineage is visible and reruns are safe. Partitioning and compaction were tuned to the queries people actually ran, and that tuning is where most of the gains came from.</p>
+              <h4>Result</h4>
+              <p><b>Writes 40–50% faster</b>, <b>storage down 20%</b>, response times 10–20% faster, and analytical workloads up to 40% faster.</p>
+              <p class="stack"><b>Stack:</b> Airflow, Redshift, PostgreSQL, Python</p>
+            </div>
+          </details>
+        </li>
+        <li>
+          <details>
+            <summary>Implemented a <b>PII detection</b> pipeline to enable compliant, secure data sharing.</summary>
+            <div class="deep">
+              <h4>Problem</h4>
+              <p>Every internal dataset share needed a manual privacy check, which slowed teams down and still missed things.</p>
+              <h4>Approach</h4>
+              <p>An automated detection pipeline that finds personal information before data leaves its owner, so datasets can be shared without a manual review step. The same idea, extended to faces in images, became Data Anonymizer (see Projects).</p>
+              <p class="stack"><b>Stack:</b> Python, transformer-based NER</p>
+            </div>
+          </details>
+        </li>
+      </ol>
+    </article>
   </section>
 
-  <!-- ========== ABOUT ========== -->
-  <section class="wrap section" id="about" aria-labelledby="about-h">
-    <div class="sec-h">
-      <h2 id="about-h">About</h2>
+  <!-- ========== SKILLS ========== -->
+  <section id="skills" aria-labelledby="skills-h">
+    <h2 id="skills-h">Skills</h2>
+    <dl class="grid">
+      <dt>Languages</dt><dd>Python</dd>
+      <dt>Machine Learning &amp; NLP</dt><dd>LLMs, Transformers, Summarisation, Classification, Clustering, Recommenders</dd>
+      <dt>LLMs &amp; Agents</dt><dd>OpenAI API, LangChain, LangGraph, LangSmith, RAG, voice agents, MCP, fine-tuning</dd>
+      <dt>Frameworks &amp; Tools</dt><dd>PyTorch, TensorFlow, Scikit-learn</dd>
+      <dt>Data &amp; MLOps</dt><dd>Airflow, Docker, CI/CD, Microservices, FastAPI, Flask, Streamlit, AWS</dd>
+      <dt>Databases &amp; Search</dt><dd>PostgreSQL, MySQL, MongoDB, Redshift, <b>Elasticsearch</b>, Pinecone</dd>
+    </dl>
+  </section>
+
+  <!-- ========== EDUCATION ========== -->
+  <section id="education" aria-labelledby="edu-h">
+    <h2 id="edu-h">Education</h2>
+    <div class="edu">
+      <span><b>Bachelor of Technology in Computer Science Engineering</b>, Lovely Professional University<br>CGPA: 7.7/10</span>
+      <span>2019 – 2023</span>
     </div>
-
-    <div class="profile">
-      <div>
-        <svg class="portrait" role="img" aria-label="Placeholder portrait monogram"><use href="#ill-portrait"/></svg>
-      </div>
-
-      <div class="bio">
-        <p>Kartikey Shaurya is a machine learning engineer in Chandigarh who has spent three years putting AI into systems that other people depend on: a state government's patrol planning, a logistics company's phone lines, a legal firm's support desk, and the data lake an analytics company runs on.</p>
-        <p>His work sits where large language models meet infrastructure. He has architected multi-agent platforms with LangChain and LangGraph, fine-tuned Pegasus, BERT and DistilBERT for summarisation, classification and PII detection, built recommendation pipelines on Elasticsearch, and re-engineered a 160 GB warehouse on Airflow. Each project above is listed with the number it moved, because he asks for the baseline before he starts.</p>
-        <p>He holds a B.Tech in Computer Science from Lovely Professional University and completed Udacity's Deep Learning Nanodegree on a Bertelsmann scholarship. He is currently leading AI delivery at Creed Infotech and is open to senior ML and AI engineering roles.</p>
-      </div>
-
-      <div>
-        <dl class="stack">
-          <dt>Language</dt><dd><b>Python</b></dd>
-          <dt>LLMs &amp; agents</dt><dd><b>OpenAI API</b>, LangChain, <b>LangGraph</b>, LangSmith, RAG, voice agents, fine-tuning</dd>
-          <dt>Machine learning</dt><dd><b>PyTorch</b>, TensorFlow, Scikit-learn; transformers, summarisation, classification, clustering, recommenders</dd>
-          <dt>Search &amp; vectors</dt><dd><b>Elasticsearch</b>, Pinecone</dd>
-          <dt>Data &amp; MLOps</dt><dd><b>Airflow</b>, Docker, CI/CD, microservices, FastAPI, Flask, Streamlit, AWS</dd>
-          <dt>Databases</dt><dd>PostgreSQL, MySQL, MongoDB, Redshift</dd>
-        </dl>
-
-        <div class="notice" id="hire" style="margin-top:1.5rem">
-          <p class="kicker">Availability</p>
-          <h3>Open to senior ML and AI engineering roles</h3>
-          <p>Chandigarh, remote, or relocation for the right team. Replies within a day.</p>
-          <a class="btn" href="mailto:kartikeyshaurya@gmail.com?subject=Hello%20Kartikey">Email kartikeyshaurya@gmail.com</a>
-          <span class="alt">Or call <a href="tel:+917646032608">+91 76460 32608</a> · <a href="Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></span>
-        </div>
-      </div>
+    <div class="edu">
+      <span><b>Deep Learning Nanodegree</b>, Udacity (Bertelsmann scholarship)</span>
     </div>
   </section>
 
-  <!-- ========== IN DEPTH ========== -->
-  <section class="wrap section" aria-labelledby="depth-h">
-    <div class="sec-h">
-      <h2 id="depth-h">In depth</h2>
-      <a href="#top">Back to top ↑</a>
-    </div>
+  <!-- ========== PROJECTS ========== -->
+  <section id="projects" aria-labelledby="proj-h">
+    <h2 id="proj-h">Projects</h2>
 
-    <div class="depth">
+    <details class="proj">
+      <summary><b>Samarth Platform Enhancements</b> — Built analytics workflows and <b>job-matching recommenders</b>; improved data ingestion and MIS reporting pipelines; implemented an <b>AI-powered bot</b> for data collection quality and coverage.</summary>
+      <div class="deep">
+        <p>Samarth is a government skilling platform. Beyond the job-assistance chatbot, I built the parts that make such a system trustworthy: recommenders that match workers to openings, ingestion and MIS reporting that run without hand-holding, and a bot that checks the quality and coverage of data collected in the field, so gaps show up before they reach a report.</p>
+      </div>
+    </details>
 
-      <article class="story" id="voice">
-        <figure><svg class="ill" aria-hidden="true"><use href="#ill-voice"/></svg><figcaption>Voice agents, ValueLoads, 2025.</figcaption></figure>
-        <div>
-          <p class="kicker">Agents &amp; LLMs <span class="fmt">Creed Infotech</span></p>
-          <h2>The agent that answers the phone</h2>
-          <p class="dek">Voice-enabled AI agents now take operational calls at a freight company and finish the workflow themselves.</p>
-          <div class="body">
-            <p>Logistics operations are conversations: a driver calling about a pickup, a customer asking where a load is, a broker confirming a rate. Each one used to land on a person. At ValueLoads, Kartikey designed and deployed <b>voice-enabled AI agents</b> that hold those conversations and act on them.</p>
-            <p>The agents listen, reason over the live call with a language model, and speak back, with the latency kept tight enough that it feels like a call rather than a form. Because they call the company's operational tools directly, a conversation ends with the record updated, not with a ticket for someone else to work.</p>
-            <p>The parts that mattered most were the unglamorous ones: a clean hand-off to a human when confidence drops, and observability on every turn so a bad call can be replayed and diagnosed instead of argued about.</p>
-          </div>
-          <a class="back" href="#top">Front page ↑</a>
-        </div>
-        <dl class="facts">
-          <dt>Role</dt><dd>Design, build, deploy</dd>
-          <dt>Where</dt><dd>Creed Infotech, for ValueLoads</dd>
-          <dt>When</dt><dd>2025</dd>
-          <dt>Stack</dt><dd>LLM agents, speech in and out, OpenAI API, FastAPI, Docker</dd>
-        </dl>
-      </article>
+    <details class="proj">
+      <summary><b>Neural Ocean (Internal Data Lake)</b> — Implemented <b>DWH architecture</b> with Airflow, reducing analytical response times by <b>40%</b> and strengthening internal profiling capabilities.</summary>
+      <div class="deep">
+        <p>The warehouse rebuild described under Sapio Analytics. Beyond the speed-ups, the layered design gave the analytics team profiling tooling they used daily, and lineage they could follow from a dashboard number back to the raw record.</p>
+      </div>
+    </details>
 
-      <article class="story" id="support">
-        <figure><svg class="ill" aria-hidden="true"><use href="#ill-chat"/></svg><figcaption>Support assistants for Vnaya and Virtue Legal Services.</figcaption></figure>
-        <div>
-          <p class="kicker">Agents &amp; LLMs <span class="fmt">Creed Infotech</span></p>
-          <h2>Support that knows when not to answer</h2>
-          <p class="dek">AI assistants for an online tutoring company and a legal-services firm, grounded in each business's own material.</p>
-          <div class="body">
-            <p>Vnaya teaches children online. Virtue Legal Services advises clients on matters where a wrong answer has consequences. Both had support queues growing faster than their teams, and both needed an assistant that answered from what the company actually says rather than from what a model guesses.</p>
-            <p>Kartikey designed and deployed <b>AI-powered support chatbots</b> for each, retrieving from the company's own documents and policies so that replies are traceable. The deployments are separate but share tooling, so an improvement to one ships to both.</p>
-            <p>For the legal assistant the key feature is restraint: it knows which questions it must decline and route to a person. Evaluation sets were built from real tickets before launch, so the first users were not the test set.</p>
-          </div>
-          <a class="back" href="#top">Front page ↑</a>
-        </div>
-        <dl class="facts">
-          <dt>Role</dt><dd>Design, build, deploy</dd>
-          <dt>Where</dt><dd>Creed Infotech, for Vnaya and Virtue Legal Services</dd>
-          <dt>When</dt><dd>2025</dd>
-          <dt>Stack</dt><dd>RAG, LangChain, OpenAI API, Pinecone, FastAPI</dd>
-        </dl>
-      </article>
-
-      <article class="story" id="rejara">
-        <figure><svg class="ill" aria-hidden="true"><use href="#ill-agents"/></svg><figcaption>Agent graph on the Rejara platform.</figcaption></figure>
-        <div>
-          <p class="kicker">Agents &amp; LLMs <span class="fmt">Primotech</span></p>
-          <h2>Agents that collect data and hand work to each other</h2>
-          <p class="dek">A multi-agent platform built on LangChain and LangGraph, with fine-tuned Pegasus and BERT and recommendations served from Elasticsearch.</p>
-          <div class="body">
-            <p>On the Rejara platform Kartikey architected and deployed <b>LLM-driven agents</b> that gather data autonomously and collaborate: one collects, another validates, another condenses. Building them on LangGraph gave each agent explicit state, so long-running tasks can pause, resume and be inspected rather than restarted.</p>
-            <p>Underneath the agents sit models he fine-tuned for the job: <b>Pegasus</b> for conversational summarisation and <b>BERT</b> for topic classification. Their outputs feed <b>Elasticsearch-based recommendation pipelines</b> that reduced manual review time while improving the accuracy of the insights reviewers saw.</p>
-            <p>Each agent runs as its own microservice with its own scaling profile, orchestrated as workflows, which is what let the platform adapt across user segments without rewrites.</p>
-          </div>
-          <a class="back" href="#top">Front page ↑</a>
-        </div>
-        <dl class="facts">
-          <dt>Role</dt><dd>Architecture, modelling, deployment</dd>
-          <dt>Where</dt><dd>Primotech, Rejara platform</dd>
-          <dt>When</dt><dd>2024–2025</dd>
-          <dt>Stack</dt><dd>LangGraph, LangChain, OpenAI API, Pegasus, BERT, Elasticsearch, microservices</dd>
-        </dl>
-      </article>
-
-      <article class="story" id="lake">
-        <figure><svg class="ill" aria-hidden="true"><use href="#ill-lake"/></svg><figcaption>Neural Ocean: raw, cleaned and modelled layers.</figcaption></figure>
-        <div>
-          <p class="kicker">Data &amp; Pipelines <span class="fmt">Sapio Analytics</span></p>
-          <h2>A 160 GB data lake stops being the bottleneck</h2>
-          <p class="dek">Neural Ocean, the company's internal data lake, was rebuilt as a warehouse on Airflow. Writes got 40–50% faster and storage shrank by a fifth.</p>
-          <div class="body">
-            <p>Sapio's analysts worked on top of a 160 GB+ internal data lake that was slow to write to and expensive to keep. Kartikey implemented a <b>warehouse architecture with Airflow</b>: raw, cleaned and modelled layers, each hop owned by a DAG, so lineage is visible and reruns are safe.</p>
-            <p>Partitioning and compaction were tuned to the queries people actually ran, which is where the gains came from: <b>write throughput up 40–50%</b>, <b>storage footprint down 20%</b>, response times 10–20% faster across the board and analytical workloads up to 40% faster.</p>
-            <p>In the same role he built a <b>PII detection pipeline</b>, so datasets could be shared internally without a manual review step, and profiling tooling that the analytics team used daily.</p>
-          </div>
-          <a class="back" href="#top">Front page ↑</a>
-        </div>
-        <dl class="facts">
-          <dt>Role</dt><dd>Architecture, implementation</dd>
-          <dt>Where</dt><dd>Sapio Analytics, Mumbai</dd>
-          <dt>When</dt><dd>2022–2024</dd>
-          <dt>Stack</dt><dd>Airflow, Redshift, PostgreSQL, Python</dd>
-          <dt>Outcome</dt><dd>Writes +40–50%, storage −20%, analytics −40% latency</dd>
-        </dl>
-      </article>
-
-      <article class="story" id="assam">
-        <figure><svg class="ill" aria-hidden="true"><use href="#ill-map"/></svg><figcaption>Incident density over multiple years.</figcaption></figure>
-        <div>
-          <p class="kicker">Public Sector <span class="fmt">Sapio Analytics</span></p>
-          <h2>Where to send the patrols</h2>
-          <p class="dek">Multi-year law-enforcement data for the Government of Assam, turned into evidence for patrol planning and resource allocation.</p>
-          <div class="body">
-            <p>Working directly with the Assam Government, Kartikey analysed <b>multi-year patterns in law-enforcement data</b>: where incidents concentrated, when they recurred, and how that shifted over time.</p>
-            <p>The output was not a model for its own sake but a set of findings the government could act on, informing more efficient patrol planning and how resources were allocated across the state.</p>
-          </div>
-          <a class="back" href="#top">Front page ↑</a>
-        </div>
-        <dl class="facts">
-          <dt>Role</dt><dd>Analysis, modelling</dd>
-          <dt>Where</dt><dd>Sapio Analytics, for the Government of Assam</dd>
-          <dt>When</dt><dd>2022–2024</dd>
-          <dt>Stack</dt><dd>Python, spatio-temporal analysis, clustering, dashboards</dd>
-        </dl>
-      </article>
-
-      <article class="story" id="drivers">
-        <figure><svg class="ill" aria-hidden="true"><use href="#ill-clusters"/></svg><figcaption>Driver performance clusters.</figcaption></figure>
-        <div>
-          <p class="kicker">Public Sector <span class="fmt">Sapio Analytics</span></p>
-          <h2>Drivers earn more, and stay</h2>
-          <p class="dek">A regression-driven clustering model matched incentives to how drivers actually worked. Income rose 8–10%; attrition fell about 15%.</p>
-          <div class="body">
-            <p>A driver workforce is not one population. Kartikey built <b>regression-driven performance clustering</b> that separated drivers by how they actually drove and earned, so that incentives and routing could be set per group instead of for an average that fit nobody.</p>
-            <p>The measured result was an <b>8–10% rise in average driver income</b> and a <b>roughly 15% drop in attrition</b>, the number the business cared about most.</p>
-          </div>
-          <a class="back" href="#top">Front page ↑</a>
-        </div>
-        <dl class="facts">
-          <dt>Role</dt><dd>Modelling, deployment</dd>
-          <dt>Where</dt><dd>Sapio Analytics</dd>
-          <dt>When</dt><dd>2022–2024</dd>
-          <dt>Stack</dt><dd>Scikit-learn, regression, clustering, PostgreSQL</dd>
-          <dt>Outcome</dt><dd>Income +8–10%, attrition −15%</dd>
-        </dl>
-      </article>
-
-      <article class="story" id="samarth">
-        <figure><svg class="ill" aria-hidden="true"><use href="#ill-jobs"/></svg><figcaption>Job matching on the Samarth platform.</figcaption></figure>
-        <div>
-          <p class="kicker">Agents &amp; LLMs <span class="fmt">Sapio Analytics</span></p>
-          <h2>A job coach built from an LLM</h2>
-          <p class="dek">A chatbot with personalised job recommendations for a government skilling platform, recognised with $10,000 in AWS credits.</p>
-          <div class="body">
-            <p>On the Samarth platform Kartikey created an <b>LLM-based job-assistance chatbot</b> integrated with personalised recommendations, so a worker could ask in plain language and get openings that matched their profile. The work was recognised with <b>$10,000 in AWS credits</b>.</p>
-            <p>Around it he built the parts that make such a thing trustworthy: <b>job-matching recommenders</b>, improved data ingestion and MIS reporting pipelines, and an AI-powered bot that checked the quality and coverage of data collection in the field.</p>
-          </div>
-          <a class="back" href="#top">Front page ↑</a>
-        </div>
-        <dl class="facts">
-          <dt>Role</dt><dd>Build, deploy</dd>
-          <dt>Where</dt><dd>Sapio Analytics, Samarth platform</dd>
-          <dt>When</dt><dd>2022–2024</dd>
-          <dt>Stack</dt><dd>LLMs, recommenders, AWS, data pipelines</dd>
-          <dt>Recognition</dt><dd>$10,000 AWS credits</dd>
-        </dl>
-      </article>
-
-      <article class="story" id="anon">
-        <figure><svg class="ill" aria-hidden="true"><use href="#ill-redact"/></svg><figcaption>Text redaction and face anonymisation.</figcaption></figure>
-        <div>
-          <p class="kicker">Public Sector <span class="fmt">Government initiative</span></p>
-          <h2>Third place for an anonymiser that hides names and faces</h2>
-          <p class="dek">Fine-tuned DistilBERT finds personal information in text; YuNet finds faces in images; a UI lets each team set its own redaction rules.</p>
-          <div class="body">
-            <p>Data is useful to share and dangerous to share. For the West Bengal Government's data-security initiative Kartikey built <b>Data Anonymizer</b>, which placed third.</p>
-            <p>Text passes through a <b>DistilBERT model fine-tuned for PII detection</b>; images pass through <b>YuNet</b> for face detection and anonymisation. Because every organisation has its own idea of what counts as sensitive, the tool ships with a UI for customisable redaction rules rather than a fixed list.</p>
-          </div>
-          <a class="back" href="#top">Front page ↑</a>
-        </div>
-        <dl class="facts">
-          <dt>Role</dt><dd>Modelling, build</dd>
-          <dt>Where</dt><dd>West Bengal Government data-security initiative</dd>
-          <dt>Result</dt><dd>3rd place</dd>
-          <dt>Stack</dt><dd>DistilBERT, YuNet, PyTorch, Streamlit</dd>
-          <dt>Code</dt><dd><a href="https://github.com/kartikeyshaurya/Annon" target="_blank" rel="noopener">github.com/kartikeyshaurya/Annon ↗</a></dd>
-        </dl>
-      </article>
-
-    </div>
+    <details class="proj">
+      <summary><b>Data Anonymizer</b> — <b>3rd place</b>, West Bengal Government data-security initiative. Fine-tuned DistilBERT for PII in text, YuNet for faces in images.</summary>
+      <div class="deep">
+        <p>Data is useful to share and dangerous to share. Text passes through a DistilBERT model fine-tuned for PII detection; images pass through YuNet for face detection and anonymisation. Every organisation has its own idea of what counts as sensitive, so the tool has a UI for custom redaction rules instead of a fixed list.</p>
+        <p class="stack"><b>Stack:</b> DistilBERT, YuNet, PyTorch, Streamlit · <a href="https://github.com/kartikeyshaurya/Annon" target="_blank" rel="noopener">Source ↗</a></p>
+      </div>
+    </details>
   </section>
+
+  <!-- ========== OPEN SOURCE ========== -->
+  <section id="oss" aria-labelledby="oss-h">
+    <h2 id="oss-h">Open source &amp; earlier work</h2>
+    <ul class="oss">
+      <li><a href="https://github.com/kartikeyshaurya/SDV" target="_blank" rel="noopener"><b>Self-driving car</b></a> — behavioural cloning for steering and throttle on simulated tracks.</li>
+      <li><a href="https://github.com/kartikeyshaurya/Disaster_management_sysytem" target="_blank" rel="noopener"><b>Disaster management system</b></a> — NLP classifier that sorts crisis messages, with a live prediction dashboard.</li>
+      <li><a href="https://github.com/kartikeyshaurya/fire_prediction" target="_blank" rel="noopener"><b>Fire prediction</b></a> — CNN image detection for early hazard alerts.</li>
+      <li><a href="https://github.com/kartikeyshaurya/Sentiments_and_deep_Learning" target="_blank" rel="noopener"><b>Sentiment analysis on SageMaker</b></a> — trained and served end to end on AWS, 92% accuracy.</li>
+      <li><a href="https://github.com/kartikeyshaurya/deepseek_from_scratch" target="_blank" rel="noopener"><b>DeepSeek from scratch</b></a> — the architecture rebuilt piece by piece in notebooks.</li>
+    </ul>
+  </section>
+
 </main>
 
-<footer class="foot">
-  <div class="wrap">
-    <div>
-      <p class="logo">Kartikey Shaurya</p>
-      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
-    </div>
-    <div>
-      <h4>Sections</h4>
-      <ul>
-        <li><a href="#agents">Agents &amp; LLMs</a></li>
-        <li><a href="#search">Search &amp; Recommendation</a></li>
-        <li><a href="#data">Data &amp; Pipelines</a></li>
-        <li><a href="#public">Public Sector</a></li>
-        <li><a href="#experience">Experience</a></li>
-      </ul>
-    </div>
-    <div>
-      <h4>Elsewhere</h4>
-      <ul>
-        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
-        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
-        <li><a href="Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
-        <li><a href="tel:+917646032608">+91 76460 32608</a></li>
-      </ul>
-    </div>
-    <p class="fine">
-      <span>© <span id="year">2026</span> Kartikey Shaurya</span>
-      <span>Hand-written HTML and CSS. <a href="https://github.com/kartikeyshaurya/kartikeyshaurya.github.io" target="_blank" rel="noopener">Source</a></span>
-    </p>
-  </div>
+<footer>
+  <span>© <span id="year">2026</span> Kartikey Shaurya · Open to senior ML and AI engineering roles</span>
+  <a href="https://github.com/kartikeyshaurya/kartikeyshaurya.github.io" target="_blank" rel="noopener">Source</a>
 </footer>
+</div>
 
 <script>
   (function () {
@@ -593,7 +763,7 @@
     d.getElementById("today").textContent = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
     d.getElementById("year").textContent = new Date().getFullYear();
 
-    // Highlight the section in view in the primary nav.
+    // Underline the section in view in the nav.
     var links = d.querySelectorAll(".primary a[href^='#']");
     if ("IntersectionObserver" in window) {
       var map = {};
@@ -607,6 +777,25 @@
       }, { rootMargin: "-20% 0px -70% 0px" });
       Object.keys(map).forEach(function (id) { var el = d.getElementById(id); el && io.observe(el); });
     }
+
+    var all = d.querySelectorAll("main details");
+    var btn = d.getElementById("toggle-all");
+    function setAll(open) {
+      all.forEach(function (el) { el.open = open; });
+      btn.textContent = open ? "Collapse all" : "Expand all";
+      btn.setAttribute("aria-pressed", open);
+    }
+    btn.addEventListener("click", function () { setAll(btn.getAttribute("aria-pressed") !== "true"); });
+
+    // Print the full write-ups, then restore what the reader had open.
+    var saved;
+    window.addEventListener("beforeprint", function () {
+      saved = Array.prototype.map.call(all, function (el) { return el.open; });
+      all.forEach(function (el) { el.open = true; });
+    });
+    window.addEventListener("afterprint", function () {
+      all.forEach(function (el, i) { el.open = saved[i]; });
+    });
   })();
 </script>
 </body>

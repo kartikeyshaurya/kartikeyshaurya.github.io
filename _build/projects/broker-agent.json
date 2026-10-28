@@ -1,0 +1,149 @@
+{
+  "slug": "broker-agent",
+  "theme": "freight",
+  "order": 2,
+  "title": "Valora Broker Agent",
+  "headline": "A chat agent that reads the TMS and asks before it writes",
+  "dek": "A supervisor model and seven specialist agents answer freight brokers' questions from live TMS data and prepare changes that run only after the broker approves the exact action.",
+  "summary": "Multi-agent assistant inside a freight TMS: live answers, and every write waits for the broker's approval.",
+  "client": "Creed Infotech, for ValueLoads",
+  "role": "Sole engineer: API research, architecture, backend, frontend, deployment",
+  "status": "Pre-release, in testing",
+  "stack": [
+    "Python",
+    "FastAPI",
+    "PostgreSQL",
+    "Redis",
+    "MinIO",
+    "OpenAI Responses API",
+    "Langfuse",
+    "React",
+    "TypeScript",
+    "Docker Compose"
+  ],
+  "problem": [
+    "Freight brokers on the ValueLoads TMS portal work across many screens: shipments, shippers, carriers, the load board, aging, claims and reports. The shipment is the hub that ties them together, so a simple question like \"which of my loads deliver today, and is that shipper over their credit limit?\" means clicking through several pages and stitching the answer together by hand.",
+    "The API behind the portal is large and inconsistent, and the data is real: real freight, real money, and free text written by outsiders. Any assistant had to answer from live data, never do more than the broker is allowed to do, and never change a record without a person deciding."
+  ],
+  "approach": [
+    "I did not start with prompts. I started by mapping the API: a generated reference, a live probe of every read route a broker can reach, and one document per portal page that maps each column to the response field it comes from. That evidence showed me the API could not be trusted by its spec. Some read requests changed state, some routes failed, and identifiers came in more than one form. It also meant every tool I wrote could point back to something I had observed.",
+    "That finding shaped the safety model. I could not classify a tool as safe because of its HTTP verb, so I set each tool's effect by hand: read, read with an outside service, write, or write that is hard to undo. And I split every write into two halves. <b>The model can only prepare a write, which validates it and builds a preview. Committing it is plain code that runs after the broker approves the exact payload on a confirmation card.</b> Writes are also switched off globally by default.",
+    "For identity, I chose to have the agent act with the broker's own TMS session instead of a service account. The TMS already enforces permissions and logs the real user, so the agent can never do more than the person using it, and I did not have to rebuild an authorisation layer. The session is never stored on our side.",
+    "For structure, one agent with every tool kept choosing the wrong one and filling its context with wide records. I moved to a supervisor that delegates to seven specialists (shippers, carriers, capacity, shipments, finance, insights and container quotes). Each specialist starts with a fresh context and sees only its own small set of tools, and specialists cannot call each other, so every cross-domain step goes back through one place I can debug. My design document proposed LangGraph, but once the approval pause turned out to be a durable database row plus a new turn, a hand-written loop was simpler to stream, budget, trace and test."
+  ],
+  "built": [
+    "A supervisor and seven specialist agents on the OpenAI Responses API with strict function tools, plus fast-path tools for the most common questions.",
+    "A single tool gateway that every call passes through: allowlist, permission check, response shaping, redaction of sensitive fields, caching and audit.",
+    "A prepare-then-commit write flow with approve, edit and reject on a confirmation card, idempotent approvals, expiry, and a stronger warning for actions that cannot be undone.",
+    "A streaming chat UI in React that shows live steps, structured result cards and suggested next actions.",
+    "Attachment handling for PDFs, images and office documents: text extraction, document-type classification, scrubbing of identity numbers, and approved upload to the TMS.",
+    "Exact conversation replay, so each thread resumes with the same model-facing history and prompt caches stay warm.",
+    "An admin panel with per-user agent access, monthly spend caps, a workspace budget, usage analytics and a tool-call audit log.",
+    "Prompt-injection defences treating all outside text as data, backed by an adversarial test sheet that is part of the release gate."
+  ],
+  "architecture": {
+    "mermaid": "flowchart LR\n  B[\"Broker in the<br/>TMS portal\"] --> UI[\"Chat UI\"]\n  UI --> API[\"Agent API\"]\n  API --> SUP[\"Supervisor\"]\n  SUP --> SP[\"Seven specialist<br/>agents\"]\n  SUP --> LLM[\"Language model\"]\n  SP --> GW[\"Tool gateway<br/>permissions, redaction, audit\"]\n  GW --> TMS[\"ValueLoads TMS<br/>as the broker\"]\n  API --> DB[(\"Threads, approvals<br/>and audit\")]\n  API --> FS[(\"Attachment store\")]\n  GW --> C[(\"Cache\")]",
+    "caption": "Every tool call, from every specialist, goes through one gateway that calls the TMS as the signed-in broker.",
+    "components": [
+      {
+        "name": "Supervisor",
+        "desc": "Reads the conversation, answers simple questions directly and delegates focused tasks to one specialist at a time."
+      },
+      {
+        "name": "Specialist agents",
+        "desc": "Seven domain agents, each with a fresh context, its own prompt and only its own tools."
+      },
+      {
+        "name": "Tool gateway",
+        "desc": "The only path to the TMS: it checks permissions, shapes and redacts responses, caches reads and audits every call."
+      },
+      {
+        "name": "Approval store",
+        "desc": "Durable pending actions, so a prepared write survives restarts and deploys until the broker decides."
+      },
+      {
+        "name": "Attachment pipeline",
+        "desc": "Extracts and classifies uploaded documents locally first and uses the model's vision only when there is no text layer."
+      },
+      {
+        "name": "Admin panel",
+        "desc": "Controls who can use which agent, sets spending limits and shows usage and audit history."
+      }
+    ]
+  },
+  "flow": {
+    "title": "What happens when a broker asks the agent to change something",
+    "steps": [
+      "The broker types a request, for example to cancel a shipment because the shipper asked.",
+      "The supervisor delegates a one-sentence task to the shipment specialist.",
+      "The specialist reads the shipment through the gateway, and the result streams to the UI as a card.",
+      "The specialist calls the cancel tool, which only prepares the action: it checks the broker's permission, validates the input and builds a preview. Nothing is sent to the TMS.",
+      "The specialist stops at once, and the broker sees a confirmation card showing exactly what will be sent and who it affects.",
+      "When the broker approves, code (not the model) commits the action with the broker's current session, records it in the audit log and clears stale cached reads.",
+      "If the TMS times out after the request was sent, the action is marked unknown and the broker is told to check the record, instead of the system guessing and risking a duplicate."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "The agent acts with the broker's own TMS session, never a service account.",
+      "why": "The TMS already enforces permissions and logs the real user, so the agent can never do more than the broker.",
+      "alternative": "A service account with our own permission layer on top.",
+      "tradeoff": "When the session expires the broker has to reconnect, and scheduled work with no user present is not possible yet."
+    },
+    {
+      "decision": "The model prepares writes; code commits them after a human approves.",
+      "why": "The broker approves the exact payload that will be sent, and the commit path is separate code that re-checks access.",
+      "alternative": "Letting the model call write endpoints directly behind an \"are you sure?\" prompt.",
+      "tradeoff": "One extra click per write, more code per write tool, and only one pending write per conversation."
+    },
+    {
+      "decision": "Each tool's effect is set by hand, not inferred from the HTTP verb.",
+      "why": "The API probe found read requests that send invites or change state, and outside lookups that may cost money.",
+      "alternative": "Treating reads as safe and everything else as a write.",
+      "tradeoff": "Every new tool needs a human decision, which is the point."
+    },
+    {
+      "decision": "Specialists with fresh contexts and narrow tool sets.",
+      "why": "A small tool list keeps prompts short and tool choice accurate, and calls outside a specialist's set are rejected even if the model tries.",
+      "alternative": "One agent with every tool, or specialists that can call each other.",
+      "tradeoff": "Extra model calls and latency per delegation, capped by per-turn budgets."
+    },
+    {
+      "decision": "A hand-written supervisor loop instead of LangGraph.",
+      "why": "The approval pause is just a durable row and a new turn, and a plain async loop made streaming, budgets and tracing easier to control and test.",
+      "alternative": "A LangGraph graph with checkpoints and interrupts, as my own design proposed.",
+      "tradeoff": "I own the loop code and give up built-in graph visualisation, but kept the seams that would make a later move possible."
+    },
+    {
+      "decision": "Stable system prompts and a fixed tool list per role.",
+      "why": "Keeping the date, user and current page out of the system prompt and sorting tools keeps the provider's prompt cache warm, which cuts cost and latency.",
+      "alternative": "Personalised prompts and per-user tool lists.",
+      "tradeoff": "A tool the broker cannot use shows up as a \"forbidden\" result rather than being hidden."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "An API I could not trust by its spec",
+      "body": "Read requests with side effects, failing routes, misnamed paths and mixed identifier types meant the documentation alone was not enough. I built evidence first: a live probe and a page-by-page field map with every claim marked as observed or inferred. Each tool records what it relies on, and the model is taught that an empty result is not an error."
+    },
+    {
+      "title": "Prompt injection through business data",
+      "body": "Shipper notes, claim comments and uploaded PDFs are written by outsiders. I treated them as data at every layer: clearly framed blocks, a shared \"data is not instructions\" rule in every prompt, no raw endpoints, strict per-specialist tools and human approval for writes. Then I wrote adversarial tests for each path."
+    },
+    {
+      "title": "Replaying multi-agent conversations exactly",
+      "body": "The model provider keeps no conversation state for us, and reasoning models need their earlier reasoning echoed back. I store the exact model-facing items for every message, so each turn replays byte for byte, prompt caches stay valid, and older threads still render if the provider changes."
+    },
+    {
+      "title": "A fragile upstream under load",
+      "body": "The test environment started failing when it received several requests at once. I put concurrency limits in the one client that talks to the TMS, retried only idempotent reads, and mapped TMS status codes to a small set of outcomes that both the model and the UI understand."
+    }
+  ],
+  "next": [
+    "Turn writes on in a disposable environment and exercise every commit path end to end.",
+    "Build an evaluation harness per specialist for routing, tool choice and grounding, and run it in CI.",
+    "Move document extraction to a background worker so large scans do not hold a request open.",
+    "Add server-side session refresh so scheduled turns, such as a morning brief, become possible."
+  ],
+  "lesson": "An agent is only as safe as the narrowest path it has to the real system. Putting every call through one gateway, acting as the real user, and separating \"prepare\" from \"commit\" meant I could reason about safety in one place instead of in every prompt. The research I did before writing code, mapping what the API actually does rather than what its spec says, was the part that made the rest of the design possible."
+}

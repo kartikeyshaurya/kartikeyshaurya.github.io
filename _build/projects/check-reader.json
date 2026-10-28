@@ -1,0 +1,130 @@
+{
+  "slug": "check-reader",
+  "theme": "freight",
+  "order": 8,
+  "title": "Check Reader",
+  "headline": "Reading bank details off a check without keeping them",
+  "dek": "A small API that reads a check or bank document with a vision model, returns structured payment fields, independently verifies the routing number, and is built so sensitive banking data leaves no trace.",
+  "summary": "A privacy-hardened API that reads routing and account numbers from checks and bank documents with a vision model.",
+  "client": "Creed Infotech, for a US freight brokerage",
+  "role": "Sole engineer: prompt design, API, privacy hardening, tests",
+  "status": "MVP",
+  "stack": [
+    "Python",
+    "FastAPI",
+    "OpenAI Responses API",
+    "OpenAI Files API",
+    "Pydantic",
+    "Docker",
+    "pytest"
+  ],
+  "problem": [
+    "When a carrier or vendor wants to be paid by direct deposit, they send proof of their bank account. Someone in accounts payable has to read the routing and account numbers off a check image, a void cheque printout, a direct-deposit form or a bank letter, and a single wrong digit sends a payment to the wrong account.",
+    "These documents arrive rotated, photographed at an angle or scanned as multi-page PDFs. Classic OCR struggles with the magnetic-ink font on checks, where several digits look alike, and many documents, such as Canadian void cheques, have no magnetic-ink line at all. And every document contains exactly the kind of data you least want to leak."
+  ],
+  "approach": [
+    "I started from an exploratory notebook and asked what a dedicated OCR engine would and would not handle. It would do well on a clean check and badly on everything else the team actually received. A general vision model with a carefully written prompt could cover all the formats and also read the account holder and bank name. The risk was a model that misreads a digit without saying so, so the rest of the design is about catching that.",
+    "To make recognition easier, I sent the font itself. Three captioned reference images of the check font go in before the document, and the prompt names the digit pairs most often confused. That turns a hard recognition task into a matching task. The model also chooses whether it is reading a real check line or printed text, so one endpoint handles both US checks and Canadian formats.",
+    "Then I added a deterministic check the model cannot influence. <b>The service recomputes the routing number checksum itself, and the prompt tells the model never to change a digit to make the checksum pass.</b> An honest, flagged misread is much safer than a plausible invented number. Unreadable characters come back marked, and a failed checksum means a person takes a second look.",
+    "Privacy shaped every other choice. Uploaded files are deleted right after the read, even if the request is cancelled, with a short server-side expiry as a backstop if the process dies. Responses are not stored. Logs carry only flags, never numbers, files or links. The service keeps no database at all, so there is no banking data at rest on our side."
+  ],
+  "built": [
+    "A single read endpoint that accepts uploaded images and PDFs, or a pre-signed link to a cloud storage object, and treats several files as pages of one document.",
+    "A prompt and reference-image set that grounds the model in the check font and handles both check lines and printed bank details, for US and Canadian layouts.",
+    "Schema-enforced structured output into a typed model: routing, account and check numbers, holder, bank, layout and notes.",
+    "An independent routing-number checksum and a readable rendering of the check line, with no verdict at all for formats where the checksum does not apply.",
+    "File types decided by content, not by name, and neutral renaming because client file names can contain personal data.",
+    "An upload-read-delete lifecycle that cleans up on partial failure and on cancellation, plus per-request token and latency reporting.",
+    "Tests with a fake model client that assert behaviour, cleanup and that logs and errors never contain bank numbers or link signatures."
+  ],
+  "architecture": {
+    "mermaid": "flowchart LR\n  CL[\"AP system or user\"] --> API[\"Check reader API<br/>auth, limits, type check\"]\n  API --> LNK[\"Link fetcher<br/>cloud storage only\"]\n  LNK --> STG[\"Cloud storage<br/>(pre-signed link)\"]\n  API --> RD[\"Reader\"]\n  REF[\"Check font<br/>reference images\"] --> RD\n  RD -->|\"upload, then delete\"| FILES[\"Model file store\"]\n  RD --> VIS[\"Vision model<br/>structured output\"]\n  RD --> VAL[\"Checksum and<br/>formatting\"]\n  VAL --> API",
+    "caption": "The model reads; deterministic code validates; nothing sensitive is stored or logged along the way.",
+    "components": [
+      {
+        "name": "Check reader API",
+        "desc": "Authenticates the caller, enforces size and count limits and identifies file types by content before anything leaves the service."
+      },
+      {
+        "name": "Link fetcher",
+        "desc": "Accepts only secure links to known cloud storage hosts, follows no redirects and caps the download while streaming."
+      },
+      {
+        "name": "Reader",
+        "desc": "Uploads the reference images and document, asks the vision model for a schema-checked answer, and deletes every upload afterwards."
+      },
+      {
+        "name": "Validator",
+        "desc": "Recomputes the routing-number checksum independently and formats the check line, without ever correcting a digit."
+      }
+    ]
+  },
+  "flow": {
+    "title": "What happens when a check is submitted",
+    "steps": [
+      "A client sends a check image, PDF or cloud storage link with its service key.",
+      "The service checks the key, file count, size and true file type. Nothing is sent to the model provider until all of that passes.",
+      "The reference images and document pages are uploaded together.",
+      "The vision model receives the captioned reference images, then the document, and returns a structured reading.",
+      "Every uploaded file is deleted, even if the request was cancelled or the model call failed.",
+      "The service recomputes the routing checksum, adds timing and token usage, logs only safe flags and returns the result."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "A general vision model instead of a dedicated check OCR engine.",
+      "why": "Real inputs include photos, scans, void cheques with no check line, deposit forms and bank letters. One model with a good prompt covers all of them and reads names too.",
+      "alternative": "A font-trained OCR engine or a commercial check-reading API.",
+      "tradeoff": "Per-request cost and latency, and the risk of silent misreads, which the checksum and marked characters are there to catch."
+    },
+    {
+      "decision": "Validate deterministically, but never fix.",
+      "why": "For payment data, a flagged misread that a person reviews is the correct outcome. A number nudged until it passes the checksum is worse than no number.",
+      "alternative": "Automatically correcting digits until the checksum passes.",
+      "tradeoff": "Some reads come back flagged and need a human."
+    },
+    {
+      "decision": "Delete uploads in a cancellation-safe cleanup, with a server-side expiry and no stored responses.",
+      "why": "These are real bank numbers, so cleanup has to hold under every failure mode, including a client disconnecting mid-request or the process dying.",
+      "alternative": "Inline images with nothing to clean up, or keeping uploads for debugging.",
+      "tradeoff": "More API calls per request, and debugging relies on request IDs instead of stored files."
+    },
+    {
+      "decision": "Accept links only from known cloud storage hosts.",
+      "why": "A general URL fetcher would turn the service into a proxy into internal networks. A strict allowlist with no redirects closes that, and the service holds no cloud credentials of its own.",
+      "alternative": "A generic fetcher with address checks, or giving the service its own cloud credentials.",
+      "tradeoff": "Callers have to provide a pre-signed link."
+    },
+    {
+      "decision": "Treat logs and errors as a leak surface.",
+      "why": "Logs and error messages are where sensitive data usually escapes. Logs carry flags only, errors refer to \"link 1\" instead of the link, and raw model output is never included in an error.",
+      "alternative": "Standard request logging.",
+      "tradeoff": "Less context when debugging a bad read; the request ID is the correlation key."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "Guaranteed cleanup under every failure",
+      "body": "The hard cases were a partial upload failure, where some files exist and some do not, and a request cancelled mid-flight. The upload step records every file that succeeded before re-raising the error, and deletion runs in a scope shielded from cancellation. A deletion that finds the file already gone counts as success."
+    },
+    {
+      "title": "Documents with no check line",
+      "body": "Canadian void cheques print the details in ordinary type, and deposit forms use rows of single-digit boxes. I moved the prompt from check-line-only to two sources, with explicit guidance on where details sit on each document type and which numbers are not the answer, such as phone numbers, postal codes and numbers inside a company name."
+    },
+    {
+      "title": "Canadian routing numbers written three ways",
+      "body": "Canadian institutions print the same routing information in several formats. The prompt normalises them to one form, and the service returns no checksum verdict for them at all, because \"failed\" would be misleading for a format the checksum was never designed for."
+    },
+    {
+      "title": "Not leaking credentials through convenience features",
+      "body": "Pre-signed links carry their credential in the link itself, and common HTTP libraries log full links by default. I quietened that logging, stripped the credential part from any link echoed back, and reported only the type of a transport error, since error messages can quote the link."
+    }
+  ],
+  "next": [
+    "Add a server-side \"needs review\" flag that combines checksum failure, unreadable characters and disagreement between sources.",
+    "Build a labelled evaluation set to measure field-level accuracy per model and pick the cheapest model that meets the bar.",
+    "Add per-client keys, rate limiting, encrypted transport and an asynchronous job mode for volume.",
+    "Feed results into the carrier payment flow as pre-filled details for a person to confirm."
+  ],
+  "lesson": "Small services that handle sensitive data deserve the same care as big ones, because the risk is in the data, not the code size. The pattern I keep coming back to is simple: let the model extract, let deterministic code validate, and let a person decide when the two disagree. And treat every log line and error message as something that might be read by the wrong person."
+}

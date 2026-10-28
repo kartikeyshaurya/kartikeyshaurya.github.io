@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ValueLoads AI Voice Platform: The agent that answers the phone and leaves clean data behind | Kartikey Shaurya</title>
+  <meta name="description" content="A multi-tenant platform where a business designs an AI phone agent in a dashboard, attaches a Twilio number, and gets a transcript, a recording and a structured lead record after every call.">
+  <meta name="author" content="Kartikey Shaurya">
+  <link rel="canonical" href="https://kartikeyshaurya.github.io/projects/valueloads-voice.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="ValueLoads AI Voice Platform: The agent that answers the phone and leaves clean data behind | Kartikey Shaurya">
+  <meta property="og:description" content="A multi-tenant platform where a business designs an AI phone agent in a dashboard, attaches a Twilio number, and gets a transcript, a recording and a structured lead record after every call.">
+  <meta property="og:url" content="https://kartikeyshaurya.github.io/projects/valueloads-voice.html">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="wrap util">
+    <ul>
+      <li>Chandigarh, India</li>
+    </ul>
+    <ul>
+      <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
+      <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a class="pdf" href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+    </ul>
+  </div>
+
+  <div class="wrap masthead masthead--slim">
+    <a class="logo" href="../index.html">Kartikey Shaurya</a>
+    <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
+  </div>
+
+  <nav class="primary" aria-label="Sections">
+    <ul>
+      <li><a href="../index.html">Front page</a></li>
+      <li><a href="../projects/index.html" class="is-active" aria-current="page">Projects</a></li>
+      <li><a href="../index.html#experience">Experience</a></li>
+      <li><a href="../index.html#about">About</a></li>
+      <li><a class="cta" href="../index.html#hire">Hire me</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" class="case">
+  <section class="wrap case-head">
+    <p class="kicker"><a href="index.html">Projects</a> <span class="fmt">Freight &amp; Logistics AI</span></p>
+    <h1>The agent that answers the phone and leaves clean data behind</h1>
+    <p class="dek">A multi-tenant platform where a business designs an AI phone agent in a dashboard, attaches a Twilio number, and gets a transcript, a recording and a structured lead record after every call.</p>
+    <p class="byline">By <b>Kartikey Shaurya</b> · ValueLoads AI Voice Platform · Creed Infotech, for ValueLoads</p>
+  </section>
+
+  <div class="wrap case-grid">
+    <div class="case-body">
+
+      <section aria-labelledby="problem-h">
+        <h2 id="problem-h">The problem</h2>
+        <div class="prose"><p>People who work the phones at freight brokerages and on sales teams spend much of the day on repetitive calls: carriers asking about loads, leads that need qualifying, follow-ups that never get logged. The calls follow a pattern, but every business has its own script, its own data and its own idea of a good outcome.</p>
+<p>Off-the-shelf voice bots handle the talking and little else. They are hard to customise per business, hard to bill per tenant, and they leave nothing structured behind once the caller hangs up. ValueLoads wanted a platform where each business could design its own agent, pay only for what it used, and get a usable lead record out of every call.</p></div>
+      </section>
+
+      <section aria-labelledby="approach-h">
+        <h2 id="approach-h">How I thought about it</h2>
+        <div class="prose prose--lead"><p>The first thing I noticed was that the platform had two workloads that behave nothing alike. The dashboard is ordinary request and response CRUD: tenants, agents, campaigns, billing. A live call is a long-running audio pipeline that must never block, because a 200 millisecond stall is something the caller hears. In one process, a slow analytics query could stutter a conversation. So I split it into a Django control plane that owns configuration and a separate FastAPI and Pipecat voice service that owns calls, with one database, separate schemas and a narrow admin API between them.</p>
+<p>The constraint that shaped everything else was money moving in real time. Two calls for the same tenant can arrive at the same moment, and they must not both slip past an empty wallet or a concurrency cap. I put the billing check at the very start of the call, before Twilio opens any audio, inside one transaction that locks that tenant&#x27;s billing record. If anything is uncertain it denies the call, which costs nothing. Charging happens after the call against an append-only ledger that can only record a call once, so retried webhooks can never double-charge, and a watchdog ends calls politely when the balance runs out.</p>
+<p>For the conversation itself I weighed a single speech-to-speech model against a cascade of speech-to-text, an LLM with tools, and text-to-speech. Speech-to-speech is simpler and can be faster, but tenants wanted to choose their voices and providers, and I wanted a transcript and a tool log for every turn so I could extract data afterwards. I chose the cascade and accepted that turn-taking and latency would become my problem.</p>
+<p>That trade-off came due. Calls felt slow and nothing in the logs said why, so before tuning anything I added per-turn and per-stage latency telemetry. Then I read the framework source inside the running container and found a turn-detection default that waited about two seconds on every turn whenever the speech-to-text provider did not mark transcripts as final. The principle I took from it: <b>any behaviour that adds seconds to a call has to be explicit in my code</b>, not inherited from someone else&#x27;s release notes.</p></div>
+      </section>
+
+      <section aria-labelledby="built-h">
+        <h2 id="built-h">What I built</h2>
+        <ul class="ticks"><li>A Django control plane for tenants, roles, agents with versioned prompts, phone numbers, tools, leads, outbound campaigns and a prepaid billing ledger.</li>
+<li>A real-time voice service on FastAPI and Pipecat that streams Twilio audio through speech-to-text, an LLM with tool calls, and text-to-speech, with providers chosen per agent and automatic failover for speech output.</li>
+<li>An agent designer, including a feature that uses an LLM to turn a free-text call script into a flow diagram.</li>
+<li>Outbound campaigns with per-tenant and per-campaign concurrency caps, calling-hour windows in the campaign&#x27;s timezone, retries on no-answer, and answering-machine detection that doesn&#x27;t delay the greeting.</li>
+<li>A config-driven tool system so a tenant can expose its own REST API to the agent without a code change, alongside a built-in fuzzy broker lookup.</li>
+<li>A post-call pipeline that stores the recording and transcript, runs structured extraction for the agent&#x27;s own fields plus a standard purpose, next action and urgency, sends a summary email, and creates or updates a lead.</li>
+<li>Browser test calls over WebRTC so admins can try an agent without a phone, and a browser softphone for human sales reps that never touches AI billing.</li>
+<li>A separate load search service built to back the agent&#x27;s load lookups. Connecting the two is the next step: the voice side has a placeholder for that tool today.</li></ul>
+      </section>
+
+      <section aria-labelledby="arch-h">
+        <h2 id="arch-h">How it fits together</h2>
+        <figure class="diagram">
+          <pre class="mermaid">flowchart LR
+  A[&quot;Caller&quot;] --&gt; B[&quot;Twilio Voice&quot;]
+  U[&quot;Dashboard&lt;br/&gt;(admins, sales)&quot;] --&gt; N[&quot;Reverse proxy&lt;br/&gt;(TLS)&quot;]
+  B --&gt; N
+  N --&gt; C[&quot;Control plane&lt;br/&gt;Django&quot;]
+  N --&gt; V[&quot;Voice service&lt;br/&gt;FastAPI + Pipecat&quot;]
+  C --&gt;|&quot;provision agent&quot;| V
+  V --&gt; G[&quot;Billing gate&quot;]
+  G --&gt; D[(&quot;PostgreSQL&quot;)]
+  C --&gt; D
+  V --&gt; M[&quot;Speech-to-text, LLM,&lt;br/&gt;text-to-speech&quot;]
+  V --&gt; T[&quot;Agent tools&lt;br/&gt;(tenant APIs)&quot;]
+  V --&gt; P[&quot;Post-call jobs&quot;]
+  P --&gt; S[(&quot;Object storage&lt;br/&gt;recordings, transcripts&quot;)]
+  P --&gt;|&quot;call events&quot;| C</pre>
+          <figcaption>A Django control plane owns configuration and money; a separate Pipecat voice service owns live calls, and they share one database through separate schemas.</figcaption>
+        </figure>
+        <dl class="components"><div><dt>Control plane</dt><dd>Django app that owns tenants, roles, agents, campaigns, billing and analytics, and is the source of truth for configuration.</dd></div>
+<div><dt>Voice service</dt><dd>One Pipecat pipeline per call, with the channel (phone or WebRTC) and the speech provider hidden behind small factories.</dd></div>
+<div><dt>Billing gate</dt><dd>A single locking transaction at call setup that checks balance, block status and concurrency before any audio flows, and fails closed.</dd></div>
+<div><dt>Provisioner</dt><dd>Turns a saved agent into the voice service&#x27;s runtime config and binds the Twilio number, with a retryable status if any step fails.</dd></div>
+<div><dt>Tool registry</dt><dd>Built-in tools plus a generic config-driven REST tool, with tenant secrets encrypted at rest and outbound requests restricted to safe destinations.</dd></div>
+<div><dt>Post-call jobs</dt><dd>Bounded background work that uploads artifacts, runs extraction and sends call events without ever blocking the audio loop.</dd></div></dl>
+      </section>
+
+      <section aria-labelledby="flow-h">
+        <h2 id="flow-h">What happens on an inbound call</h2>
+        <ol class="steps"><li>A caller dials a tenant&#x27;s number and Twilio asks the voice service what to do. The service verifies that the request really came from Twilio.</li>
+<li>The billing gate locks that tenant&#x27;s billing record, checks balance, block status and concurrent calls, and registers the call. If anything fails, the call is rejected before audio starts.</li>
+<li>Twilio opens a media stream. The service rechecks the session, records the call start and builds the pipeline.</li>
+<li>The greeting plays, from a cache when possible, and the caller&#x27;s first &quot;Hello?&quot; is not allowed to cancel it.</li>
+<li>Each turn runs voice activity detection, an explicit end-of-turn rule, speech-to-text, the LLM (which may call tools) and text-to-speech. If the caller interrupts, buffered audio is flushed.</li>
+<li>A watchdog checks the remaining balance during the call and ends it politely if it is about to run out.</li>
+<li>After hang-up, a background job stores the recording and transcript, runs structured extraction and sends call events to the control plane.</li>
+<li>The control plane charges the call exactly once against the ledger, releases the concurrency slot and creates or updates the lead.</li></ol>
+      </section>
+
+      <section aria-labelledby="dec-h">
+        <h2 id="dec-h">Decisions and trade-offs</h2>
+        <div class="decisions"><article class="decision">
+  <h3>Split the platform into a Django control plane and a FastAPI and Pipecat voice plane.</h3>
+  <dl>
+    <dt>Why</dt><dd>Dashboard CRUD and live audio fail and scale differently. Keeping them apart means a slow dashboard request can never stall a call, and the voice plane can be scaled and placed on its own.</dd>
+    <dt>Instead of</dt><dd>One Django app with async extensions, or one FastAPI app for everything.</dd>
+    <dt>The cost</dt><dd>Two config models to keep in sync. I handled that with an explicit provisioner, a retryable provisioning status and a bulk re-provision command.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Check billing before any media starts, and fail closed.</h3>
+  <dl>
+    <dt>Why</dt><dd>Simultaneous calls must not both pass a concurrency cap or an empty wallet. Rejecting a call at setup costs nothing, and locking per tenant keeps contention local to that tenant.</dd>
+    <dt>Instead of</dt><dd>Check the balance when the call-started event arrives, or count calls in memory.</dd>
+    <dt>The cost</dt><dd>A few extra queries on call setup, plus backstops: a recheck when the stream opens, cleanup that always runs on disconnect, and scheduled jobs that release stale slots and catch uncharged calls.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>An idempotent, append-only ledger, charged after the call.</h3>
+  <dl>
+    <dt>Why</dt><dd>Webhooks get retried. A uniqueness guarantee is the simplest way to charge each call exactly once, and an append-only ledger gives platform staff an audit trail.</dd>
+    <dt>Instead of</dt><dd>A mutable balance with no ledger, or charging per minute during the call.</dd>
+    <dt>The cost</dt><dd>Because charging is post-call, a mid-call watchdog is still needed, and a tenant can go slightly over within its safety margin.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>A cascaded speech-to-text, LLM and text-to-speech pipeline instead of one speech-to-speech model.</h3>
+  <dl>
+    <dt>Why</dt><dd>Tenants choose their voice and provider, every turn has a transcript and tool calls I can log and extract from, and swapping a provider is a config change.</dd>
+    <dt>Instead of</dt><dd>A realtime speech-to-speech model.</dd>
+    <dt>The cost</dt><dd>More hops means more latency to manage, and turn-taking becomes my responsibility.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Explicit turn-taking settings per agent instead of framework defaults.</h3>
+  <dl>
+    <dt>Why</dt><dd>The framework silently picked an end-of-turn strategy that added seconds per turn with some speech providers. Behaviour that costs the caller that much time belongs in my configuration.</dd>
+    <dt>Instead of</dt><dd>Leave the defaults, or use one global setting.</dd>
+    <dt>The cost</dt><dd>More knobs per agent, and agents have to be re-provisioned when a default changes.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>A generic, config-driven tool so tenants can connect their own APIs.</h3>
+  <dl>
+    <dt>Why</dt><dd>Every tenant has different systems. Describing a tool as configuration means no deploy per tenant, and the LLM only ever fills in declared parameter values while the destination and credentials stay fixed.</dd>
+    <dt>Instead of</dt><dd>A hand-written tool module per customer.</dd>
+    <dt>The cost</dt><dd>It is effectively an outbound request that tenants control, so it needs strict limits on where it can reach and trimming so a large response can&#x27;t flood the model&#x27;s context.</dd>
+  </dl>
+</article></div>
+      </section>
+
+      <section aria-labelledby="hard-h">
+        <h2 id="hard-h">The hard parts</h2>
+        <ul class="hard"><li><h3>Two seconds of dead air on every turn</h3><p>Calls felt sluggish and nothing explained it. I added per-stage latency telemetry first, then traced the delay to a framework default that waited for a transcript the speech provider never marked as final. I made turn detection an explicit per-agent setting, added a speech-to-text provider that finalises transcripts, and made streaming speech output the default.</p></li>
+<li><h3>Outbound calls that kept saying hello</h3><p>People answer the phone by talking, and with interruptions enabled every &quot;Hello?&quot; cancelled the greeting before it played. I muted caller input until the first bot utterance finishes and added a greeting cache keyed on every input that affects the audio, so there is no invalidation logic to get wrong.</p></li>
+<li><h3>Billing that stays correct when things crash</h3><p>Concurrency slots could leak when a pipeline died without a clean disconnect. I made cleanup defensive at several layers: an unconditional release on exit, an idempotent ledger and scheduled reconciliation jobs. The watchdog only ends a call on a confirmed low balance, never on a single database error.</p></li>
+<li><h3>Failover that silently did nothing</h3><p>The original speech-output fallback only worked with providers that return audio in one response. With a streaming provider as primary it dropped the fallback chain without any error, so changing the default would have quietly removed failover. I replaced it with Pipecat&#x27;s built-in service switcher using a failover strategy.</p></li></ul>
+      </section>
+
+      <section aria-labelledby="next-h">
+        <h2 id="next-h">What I'd do next</h2>
+        <ul class="ticks ticks--plain"><li>Connect the load search service to the agent&#x27;s load lookup tool, so carriers can ask about available loads mid-call.</li>
+<li>Move post-call work and webhooks onto a durable queue with an outbox, so a voice process crash can&#x27;t lose a call&#x27;s events.</li>
+<li>Run the voice plane closer to the telephony and model providers, across several workers.</li>
+<li>Add a knowledge base the agent can search as a tool, using pgvector in the same Postgres.</li></ul>
+      </section>
+
+      <blockquote class="takeaway">
+        <p class="kicker">What I took away</p>
+        <p>The model was the easy part. What made this a product was everything around it: a billing check that holds under concurrency, cleanup that works when the happy path doesn&#x27;t, and latency I can measure stage by stage. I now instrument before I tune, and I turn any framework default that costs the user time into an explicit setting in my own code.</p>
+      </blockquote>
+    </div>
+
+    <aside class="case-side">
+      <dl class="facts">
+        <dt>Role</dt><dd>Lead engineer: backend, voice runtime, deployment, security and latency audits</dd>
+        <dt>Context</dt><dd>Creed Infotech, for ValueLoads</dd>
+        <dt>Status</dt><dd>Pilot</dd>
+        <dt>Stack</dt><dd>Django, Django REST Framework, FastAPI, Pipecat, Twilio, OpenAI, Deepgram, Cartesia, PostgreSQL, React</dd>
+      </dl>
+      <nav class="toc" aria-label="On this page">
+        <p class="kicker">On this page</p>
+        <ul>
+          <li><a href="#problem-h">The problem</a></li>
+          <li><a href="#approach-h">How I thought about it</a></li>
+          <li><a href="#built-h">What I built</a></li>
+          <li><a href="#arch-h">Architecture</a></li>
+          <li><a href="#flow-h">Key flow</a></li>
+          <li><a href="#dec-h">Decisions</a></li>
+          <li><a href="#hard-h">Hard parts</a></li>
+        </ul>
+      </nav>
+    </aside>
+  </div>
+
+  <nav class="wrap pager" aria-label="More projects">
+    <a class="prev" href="broker-agent.html"><span>Previous</span>A chat agent that reads the TMS and asks before it writes</a><a class="next" href="business-data-collector.html"><span>Next</span>One service that turns messy public sources into clean answers</a>
+  </nav>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <p class="logo">Kartikey Shaurya</p>
+      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="../index.html">Front page</a></li>
+        <li><a href="../projects/index.html">All projects</a></li>
+        <li><a href="../index.html#experience">Experience</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Elsewhere</h4>
+      <ul>
+        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+      </ul>
+    </div>
+    <p class="fine">
+      <span>© 2026 Kartikey Shaurya</span>
+      <span>Most client names and internal details are withheld. Architecture is shown at the component level.</span>
+    </p>
+  </div>
+</footer>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: "strict",
+    theme: "base",
+    flowchart: { curve: "basis", htmlLabels: true },
+    themeVariables: {
+      fontFamily: "Schibsted Grotesk, Helvetica Neue, Arial, sans-serif",
+      fontSize: "15px",
+      background: "#faedda",
+      primaryColor: "#fffdf9",
+      primaryBorderColor: "#1c1a17",
+      primaryTextColor: "#1c1a17",
+      lineColor: "#a51c30",
+      secondaryColor: "#faedda",
+      tertiaryColor: "#fffbf4",
+      clusterBkg: "#fffbf4",
+      clusterBorder: "#b9b8ad",
+      edgeLabelBackground: "#faedda"
+    }
+  });
+</script>
+</body>
+</html>

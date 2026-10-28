@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Load Search Service: A load board that tells the agent what to ask next | Kartikey Shaurya</title>
+  <meta name="description" content="An in-memory freight load search service built for a voice agent. It answers which loads match, and also which question will narrow the results fastest.">
+  <meta name="author" content="Kartikey Shaurya">
+  <link rel="canonical" href="https://kartikeyshaurya.github.io/projects/load-search.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Load Search Service: A load board that tells the agent what to ask next | Kartikey Shaurya">
+  <meta property="og:description" content="An in-memory freight load search service built for a voice agent. It answers which loads match, and also which question will narrow the results fastest.">
+  <meta property="og:url" content="https://kartikeyshaurya.github.io/projects/load-search.html">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Schibsted+Grotesk:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../assets/css/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header>
+  <div class="wrap util">
+    <ul>
+      <li>Chandigarh, India</li>
+    </ul>
+    <ul>
+      <li><a href="mailto:kartikeyshaurya@gmail.com">Email</a></li>
+      <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+      <li><a class="pdf" href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+    </ul>
+  </div>
+
+  <div class="wrap masthead masthead--slim">
+    <a class="logo" href="../index.html">Kartikey Shaurya</a>
+    <p class="tag"><b>Machine Learning Engineer.</b> Production AI, reported from the inside.</p>
+  </div>
+
+  <nav class="primary" aria-label="Sections">
+    <ul>
+      <li><a href="../index.html">Front page</a></li>
+      <li><a href="../projects/index.html" class="is-active" aria-current="page">Projects</a></li>
+      <li><a href="../index.html#experience">Experience</a></li>
+      <li><a href="../index.html#about">About</a></li>
+      <li><a class="cta" href="../index.html#hire">Hire me</a></li>
+    </ul>
+  </nav>
+</header>
+
+<main id="main" class="case">
+  <section class="wrap case-head">
+    <p class="kicker"><a href="index.html">Projects</a> <span class="fmt">Freight &amp; Logistics AI</span></p>
+    <h1>A load board that tells the agent what to ask next</h1>
+    <p class="dek">An in-memory freight load search service built for a voice agent. It answers which loads match, and also which question will narrow the results fastest.</p>
+    <p class="byline">By <b>Kartikey Shaurya</b> · Load Search Service · Creed Infotech, for ValueLoads</p>
+  </section>
+
+  <div class="wrap case-grid">
+    <div class="case-body">
+
+      <section aria-labelledby="problem-h">
+        <h2 id="problem-h">The problem</h2>
+        <div class="prose"><p>Carriers call a freight broker with questions like &quot;got a reefer out of Illinois?&quot;. A voice agent answering that call has to search the live load board in well under a second, because every tool call is dead air on the phone. Callers also give details a piece at a time (&quot;out of Chicago... reefer... next Tuesday&quot;), so the search has to work on any subset of fields.</p>
+<p>Two more things make it harder. Reading forty loads aloud is useless, so the agent needs a principled way to narrow the list. And quoting a load that was covered ten minutes ago costs the broker credibility, so freshness has to be visible on every answer. Brokers and operations staff have a related question too: which brokers have loads on this lane, and how do I reach them?</p></div>
+      </section>
+
+      <section aria-labelledby="approach-h">
+        <h2 id="approach-h">How I thought about it</h2>
+        <div class="prose prose--lead"><p>I started from the shape of the upstream data rather than from a database. The broker&#x27;s API returns the whole active board in one response, and it is small enough to hold in memory comfortably. A database on the query path would add a sync job, a network hop on every voice turn and index tuning, without adding any capability. So the service keeps the entire board in process as a Polars DataFrame and rebuilds it from upstream every 60 seconds. The upstream stays the source of truth.</p>
+<p>The next question was how to refresh without ever serving a half-updated board. Instead of locks, each refresh builds a brand-new immutable frame off the event loop and then swaps a single reference. A request grabs the current snapshot once and works on it to the end. The cost is briefly holding two copies in memory, which I budgeted for. The same reasoning pinned the service to one worker process: several workers would each hold their own copy on their own schedule, and two requests could see two different boards.</p>
+<p>The most interesting decision was who chooses the next question. Handing the LLM all the matches and letting it narrow produced long, inconsistent dialogs. Narrowing is really a data question (which field still splits the result set?), and code answers that deterministically. So every search returns a suggested field from a fixed, broker-style priority: reference number, then origin, destination, equipment, pickup date and rate. A field is only suggested if the caller hasn&#x27;t given it, hasn&#x27;t declined it, and it still has more than one distinct value among the matches. <b>The search decides what to ask; the LLM only decides how to phrase it.</b></p>
+<p>I treated freshness as a product output, not just an ops concern. Every response carries the snapshot&#x27;s age, a health check fails once the board goes stale, and a metric drives alerting. The rule I settled on was to fail closed on bad data and fail open on refresh errors: a malformed or empty payload never replaces a good board, and a failed refresh keeps serving the last good one while its growing age becomes the signal.</p></div>
+      </section>
+
+      <section aria-labelledby="built-h">
+        <h2 id="built-h">What I built</h2>
+        <ul class="ticks"><li>A search endpoint that takes any subset of load fields (reference number, origin and destination, equipment, truckload or partial, commodity, pickup dates, rate and weight bounds) and combines them.</li>
+<li>Conversation-aware narrowing that returns a suggested next field, plus a way for the agent to say &quot;the caller has no reference number&quot; so it stops asking.</li>
+<li>Forgiving matching for how people actually talk: equipment matched by name or class, case-insensitive cities and states, and partial broker names.</li>
+<li>A broker directory that groups the same snapshot by broker and returns contact details and load counts, busiest first, plus the mirror query for one broker&#x27;s loads.</li>
+<li>An ingest layer that flattens nested upstream records into a fixed schema, coerces messy prices and timestamps, and refuses to publish a malformed board.</li>
+<li>Health checks and Prometheus metrics for readiness, snapshot age, refresh success and failure, refresh duration and memory use.</li>
+<li>A thin client for the voice agent that turns the suggested field into a ready-made question, with a command-line mode for testing.</li>
+<li>A hardened container that runs as a non-root user and is internal-only by default, with a test suite that needs no network.</li></ul>
+      </section>
+
+      <section aria-labelledby="arch-h">
+        <h2 id="arch-h">How it fits together</h2>
+        <figure class="diagram">
+          <pre class="mermaid">flowchart LR
+  U[&quot;Broker load API&lt;br/&gt;(full active board)&quot;] --&gt; I[&quot;Ingest and&lt;br/&gt;normalise&quot;]
+  L[&quot;Refresh loop&lt;br/&gt;every 60s&quot;] --&gt; I
+  I --&gt;|&quot;atomic swap&quot;| S[(&quot;Immutable snapshot&lt;br/&gt;Polars DataFrame&quot;)]
+  A[&quot;Voice agent&lt;br/&gt;(planned caller)&quot;] -.-&gt; C[&quot;Agent client&quot;]
+  C --&gt; R[&quot;Search API&lt;br/&gt;FastAPI&quot;]
+  R --&gt; K[&quot;Pure search and&lt;br/&gt;narrowing core&quot;]
+  K --&gt; S
+  H[&quot;Health and&lt;br/&gt;metrics&quot;] --&gt; S
+  P[&quot;Prometheus&lt;br/&gt;alerting&quot;] --&gt; H</pre>
+          <figcaption>The whole board lives in memory as one immutable snapshot; the dotted edge to the voice agent is the planned integration, not yet connected.</figcaption>
+        </figure>
+        <dl class="components"><div><dt>Ingest</dt><dd>Pulls the full board, flattens nested records into a fixed schema, and stops before publishing if the payload is empty or malformed.</dd></div>
+<div><dt>Snapshot store</dt><dd>Holds one frozen frame with its timestamp; publishing a new board is a single reference swap, so no locks are needed.</dd></div>
+<div><dt>Search core</dt><dd>Pure functions from a frame and a query to results and a suggestion, with no web framework code, so they are easy to test and could later run inside the agent.</dd></div>
+<div><dt>Search API</dt><dd>Typed request and response models at the edge for load search, the broker directory and per-broker loads.</dd></div>
+<div><dt>Health and metrics</dt><dd>Turns staleness into a failing health check and an alertable metric, so a service that looks alive but serves old data is caught.</dd></div>
+<div><dt>Agent client</dt><dd>A small wrapper for the voice agent that drops empty parameters and maps the suggested field to a natural question.</dd></div></dl>
+      </section>
+
+      <section aria-labelledby="flow-h">
+        <h2 id="flow-h">How a carrier&#x27;s request gets narrowed</h2>
+        <ol class="steps"><li>The carrier asks &quot;anything out of Illinois?&quot; and the agent extracts the origin state.</li>
+<li>The agent searches with just that field. The service pins the current snapshot for the whole request, even if a refresh lands mid-query.</li>
+<li>The core filters the board and counts every match. There are more than five, so it walks the priority list.</li>
+<li>Reference number comes first, so the response suggests it, along with the top five matches and the snapshot&#x27;s age.</li>
+<li>The agent asks for a reference number. The caller has none, so the next search excludes that field from suggestions.</li>
+<li>Origin is already known, so the core suggests destination, but only because the matches still span more than one destination.</li>
+<li>The loop continues until five or fewer loads match, which the agent reads back. If nothing matches, the agent relaxes a constraint.</li></ol>
+      </section>
+
+      <section aria-labelledby="dec-h">
+        <h2 id="dec-h">Decisions and trade-offs</h2>
+        <div class="decisions"><article class="decision">
+  <h3>Hold the whole board in process memory, with no database on the query path.</h3>
+  <dl>
+    <dt>Why</dt><dd>The upstream returns the full active board in one call and it fits comfortably in memory. Memory is the fastest index available and adds no network hop to a voice turn.</dd>
+    <dt>Instead of</dt><dd>Postgres or Elasticsearch, synced from upstream.</dd>
+    <dt>The cost</dt><dd>Every restart re-fetches the board, and capacity is bounded by RAM, so I set a memory limit and watch resident memory.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Immutable frames and a reference swap instead of locks.</h3>
+  <dl>
+    <dt>Why</dt><dd>A request works on one frozen frame, so a concurrent refresh can never produce half-old, half-new results, and there is zero lock contention.</dd>
+    <dt>Instead of</dt><dd>A mutable index guarded by a lock.</dd>
+    <dt>The cost</dt><dd>Memory briefly holds the old and new frames during a swap, so the container needs headroom.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>A single worker process.</h3>
+  <dl>
+    <dt>Why</dt><dd>Each worker would hold its own board on its own refresh schedule, so requests could disagree. Polars already parallelises inside a query.</dd>
+    <dt>Instead of</dt><dd>Several workers behind a process manager, or a shared memory store.</dd>
+    <dt>The cost</dt><dd>Throughput is capped at one process. Scaling out means identical replicas behind a load balancer, each carrying its snapshot timestamp so drift is visible.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>A deterministic next-question suggestion in code; the LLM only phrases it.</h3>
+  <dl>
+    <dt>Why</dt><dd>LLMs are inconsistent at deciding which constraint splits a result set best. A fixed priority is predictable, testable and mirrors how human brokers qualify a call, and the distinct-value check stops pointless questions.</dd>
+    <dt>Instead of</dt><dd>Let the LLM pick the next question, or choose the field that splits the results most evenly.</dd>
+    <dt>The cost</dt><dd>A fixed priority is not always the optimal split. I chose natural, predictable dialogs over the theoretical minimum number of turns.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Fail closed on bad data, fail open on refresh errors.</h3>
+  <dl>
+    <dt>Why</dt><dd>An empty board from a broken upstream must never replace a good one, but a temporary outage shouldn&#x27;t take the service down. Staleness becomes the signal instead.</dd>
+    <dt>Instead of</dt><dd>Swap in whatever arrives, or crash on a failed refresh.</dd>
+    <dt>The cost</dt><dd>A genuinely empty board would be treated as a failure. For an active brokerage that is the right bias.</dd>
+  </dl>
+</article>
+<article class="decision">
+  <h3>Put freshness in every response, not only in health checks.</h3>
+  <dl>
+    <dt>Why</dt><dd>The agent can decide for itself whether a board is too old to quote from, instead of relying only on someone reading an alert.</dd>
+    <dt>Instead of</dt><dd>A health endpoint only.</dd>
+    <dt>The cost</dt><dd>Slightly larger payloads, in exchange for a safety check on every answer.</dd>
+  </dl>
+</article></div>
+      </section>
+
+      <section aria-labelledby="hard-h">
+        <h2 id="hard-h">The hard parts</h2>
+        <ul class="hard"><li><h3>Refreshing without stalling voice turns</h3><p>Flattening and building a frame from thousands of nested records is CPU work, and running it on the event loop would stall every search once a minute. I moved the build off the loop and made publishing an atomic swap, so searches keep running against the old frame while the new one is built.</p></li>
+<li><h3>Choosing the next question without improvising</h3><p>Letting the model narrow on its own gave long, inconsistent dialogs. I moved the decision into three rules (not provided, not declined, still discriminating) and added an exclusion list so the agent doesn&#x27;t loop on a question the caller already answered. Tests pin the behaviour.</p></li>
+<li><h3>Messy upstream data</h3><p>Records are nested, fields go by different names, prices sometimes arrive as strings or blanks, and timestamps vary in precision. I wrote defensive coercers, a fixed schema that fails at build time if the shape changes, and lenient date parsing. A load missing a field never matches a constraint on that field, so gaps are not treated as wildcards.</p></li>
+<li><h3>Silent staleness</h3><p>The worst failure for a voice agent is old data that still looks healthy. I made staleness visible at three levels: the age on every response, a health check that fails once the board ages out, and a metric that a single alert can watch for both &quot;never loaded&quot; and &quot;too old&quot;.</p></li></ul>
+      </section>
+
+      <section aria-labelledby="next-h">
+        <h2 id="next-h">What I'd do next</h2>
+        <ul class="ticks ticks--plain"><li>Connect it to the voice agent&#x27;s load lookup, which is still a placeholder on the voice side, and pass the suggested question through to the LLM.</li>
+<li>Distance search (&quot;within 100 miles of Dallas&quot;) using zip-to-coordinate enrichment. The columns are already reserved.</li>
+<li>Fuzzy city matching for speech-to-text variants such as &quot;St. Louis&quot; and &quot;Saint Louis&quot;.</li>
+<li>Persist each snapshot so any quote can be traced back to exactly what the agent saw.</li></ul>
+      </section>
+
+      <blockquote class="takeaway">
+        <p class="kicker">What I took away</p>
+        <p>Separate the decision from the phrasing. Code is good at applying consistent rules to data, and LLMs are good at turning a decision into natural speech. Letting each do only its own part made the dialog shorter, testable and predictable. I would also carry over the habit of treating staleness as part of the answer, not just an ops alert.</p>
+      </blockquote>
+    </div>
+
+    <aside class="case-side">
+      <dl class="facts">
+        <dt>Role</dt><dd>Sole engineer: design, implementation, deployment</dd>
+        <dt>Context</dt><dd>Creed Infotech, for ValueLoads</dd>
+        <dt>Status</dt><dd>MVP</dd>
+        <dt>Stack</dt><dd>Python, FastAPI, Polars, Pydantic, Prometheus, Docker, pytest</dd>
+      </dl>
+      <nav class="toc" aria-label="On this page">
+        <p class="kicker">On this page</p>
+        <ul>
+          <li><a href="#problem-h">The problem</a></li>
+          <li><a href="#approach-h">How I thought about it</a></li>
+          <li><a href="#built-h">What I built</a></li>
+          <li><a href="#arch-h">Architecture</a></li>
+          <li><a href="#flow-h">Key flow</a></li>
+          <li><a href="#dec-h">Decisions</a></li>
+          <li><a href="#hard-h">Hard parts</a></li>
+        </ul>
+      </nav>
+    </aside>
+  </div>
+
+  <nav class="wrap pager" aria-label="More projects">
+    <a class="prev" href="check-reader.html"><span>Previous</span>Reading bank details off a check without keeping them</a><a class="next" href="broker-inbox-ai.html"><span>Next</span>Turning a broker&#x27;s inbox into drafted, reviewable TMS actions</a>
+  </nav>
+</main>
+<footer class="foot">
+  <div class="wrap">
+    <div>
+      <p class="logo">Kartikey Shaurya</p>
+      <a class="email" href="mailto:kartikeyshaurya@gmail.com">kartikeyshaurya@gmail.com</a>
+    </div>
+    <div>
+      <h4>Sections</h4>
+      <ul>
+        <li><a href="../index.html">Front page</a></li>
+        <li><a href="../projects/index.html">All projects</a></li>
+        <li><a href="../index.html#experience">Experience</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Elsewhere</h4>
+      <ul>
+        <li><a href="https://github.com/kartikeyshaurya" target="_blank" rel="noopener">GitHub</a></li>
+        <li><a href="https://www.linkedin.com/in/kartikey-shaurya-3bb776109/" target="_blank" rel="noopener">LinkedIn</a></li>
+        <li><a href="../Kartikey_Shaurya_ML_Engineer.pdf" target="_blank" rel="noopener">Résumé, PDF</a></li>
+      </ul>
+    </div>
+    <p class="fine">
+      <span>© 2026 Kartikey Shaurya</span>
+      <span>Most client names and internal details are withheld. Architecture is shown at the component level.</span>
+    </p>
+  </div>
+</footer>
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: "strict",
+    theme: "base",
+    flowchart: { curve: "basis", htmlLabels: true },
+    themeVariables: {
+      fontFamily: "Schibsted Grotesk, Helvetica Neue, Arial, sans-serif",
+      fontSize: "15px",
+      background: "#faedda",
+      primaryColor: "#fffdf9",
+      primaryBorderColor: "#1c1a17",
+      primaryTextColor: "#1c1a17",
+      lineColor: "#a51c30",
+      secondaryColor: "#faedda",
+      tertiaryColor: "#fffbf4",
+      clusterBkg: "#fffbf4",
+      clusterBorder: "#b9b8ad",
+      edgeLabelBackground: "#faedda"
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+{
+  "slug": "tms-mcp-server",
+  "theme": "freight",
+  "order": 5,
+  "title": "TMS MCP Server",
+  "headline": "A searchable map of a huge API, and a safe key",
+  "dek": "An MCP server that turns a TMS API reference too large for any context window into small, fast lookup tools, plus a sign-in bridge that lets Claude or ChatGPT call the live API as the signed-in user, with that user's permissions.",
+  "summary": "MCP tools for exploring a very large freight TMS API, and a sign-in bridge for safe live calls.",
+  "client": "Creed Infotech, internal tooling for a US freight brokerage's TMS",
+  "role": "Sole engineer: parser, MCP server, sign-in bridge, deployment",
+  "status": "Internal service",
+  "stack": [
+    "Python",
+    "MCP Python SDK",
+    "OAuth 2.1",
+    "SQLite",
+    "uv",
+    "Docker",
+    "nginx"
+  ],
+  "problem": [
+    "The brokerage's in-house TMS exposes a very large, inconsistently named API. Its generated reference document is far too big for any coding agent to read into context, so engineers and agents spent their time searching through it by hand, and were tripped up by near-duplicate routes and the API's own query conventions.",
+    "There was also demand to ask the live system questions, such as \"show my aging report\", without building a custom UI for each one. But giving a language model a raw session, or a service account with broad rights, is unsafe. The team needed live access that could never grant more than the person already had."
+  ],
+  "approach": [
+    "I started by looking at the kind of questions people actually asked. They were about exact identifiers: which route updates a shipper's credit limit, what does it take, which permission guards it. That ruled out the obvious answer of chunking the document and doing vector search. The reference is generated with a fixed shape, so <b>a structural parser with lexical ranking</b> gives deterministic, explainable results in milliseconds, with no embedding model and nothing to re-index.",
+    "Next I thought about how agents consume answers. They work best with small, chained answers rather than large chunks, so I designed tools that lead into each other: search for a route, get its full contract, then expand the schemas it uses. Each answer is a few hundred characters and ends with a hint for the next call. A huge document becomes a short conversation.",
+    "The quietest failure was the one that worried me most. If the generator changed a heading, the server would still start and look healthy while answering \"nothing matched\" to every question. The reference carries its own totals, so the tests assert that the parser reproduces them exactly. Drift becomes a failing test instead of a quietly empty server.",
+    "For live access, the principle was to inherit authorisation, never reimplement it. Users sign in through a standard OAuth flow against the TMS itself, and every call runs with their own session, so the TMS enforces its own permissions. The bridge only ever adds restrictions: requests are checked against the API contract before they are sent, writes need an extra scope and can be switched off globally, credentials are redacted from responses, and every call is audited without recording request bodies. The assistant never sees the TMS credential at all."
+  ],
+  "built": [
+    "A parser that indexes the whole API reference by structure at startup, with lookup indexes for routes, operations, controllers, schemas and permissions.",
+    "Read-only MCP tools for an API overview, ranked route search, route details, controller listings, schema search with bounded expansion, and permission-to-route lookups.",
+    "A ranking scheme that favours exact identifiers and drops weak matches, so results stay precise.",
+    "Self-verifying tests that reconcile parsed totals against the document's own header counts.",
+    "An OAuth 2.1 authorization server that signs users in against the TMS and keeps the TMS session on the server side, where it is renewed quietly before it expires.",
+    "Live tools, visible only to signed-in sessions, that validate each request against the contract, enforce a write scope and a global write switch, redact credentials and write an append-only audit record.",
+    "Support for local agents over stdio and remote assistants over streaming HTTP, behind a TLS proxy, with a compatibility shim across MCP SDK versions."
+  ],
+  "architecture": {
+    "mermaid": "flowchart LR\n  CC[\"Coding agent<br/>(local)\"] --> SRV[\"MCP tool server\"]\n  AI[\"Claude or ChatGPT<br/>(remote)\"] --> EDGE[\"TLS proxy\"]\n  EDGE --> SRV\n  EDGE --> AUTH[\"Sign-in bridge\"]\n  SRV --> IDX[\"Reference index<br/>and search\"]\n  AUTH --> ST[(\"Session store\")]\n  AUTH -->|\"sign in\"| TMS[\"Brokerage TMS API\"]\n  SRV --> LIVE[\"Live call guard<br/>validate, redact, audit\"]\n  LIVE --> IDX\n  LIVE -->|\"as the user\"| TMS",
+    "caption": "Reference tools work offline from the index; live calls pass through a guard that validates, redacts and audits, and run as the signed-in user.",
+    "components": [
+      {
+        "name": "Reference index",
+        "desc": "Parses the API reference into routes, schemas and permissions and answers ranked searches in milliseconds."
+      },
+      {
+        "name": "MCP tool server",
+        "desc": "Defines the tools, keeps every answer small and bounded, and refuses to serve remotely without authentication."
+      },
+      {
+        "name": "Sign-in bridge",
+        "desc": "A standard OAuth authorization server that signs users in against the TMS and holds their session on the server."
+      },
+      {
+        "name": "Live call guard",
+        "desc": "Checks each request against the API contract and the write rules, calls the TMS as the user, redacts the response and audits the call."
+      },
+      {
+        "name": "Session store",
+        "desc": "Single-node persistence for clients and sessions, with bearer credentials stored only as hashes."
+      }
+    ]
+  },
+  "flow": {
+    "title": "What happens when an assistant makes a live call",
+    "steps": [
+      "The assistant connects without credentials and is told where to sign in.",
+      "The user is sent to a sign-in page and enters their own TMS credentials, which the bridge checks against the TMS.",
+      "The bridge issues its own short-lived credentials to the assistant and keeps the TMS session on the server.",
+      "The assistant asks for a route. The guard matches it against the API contract, checks the method, required parameters, write scope and write switch, and rejects mistakes locally with a useful message.",
+      "The bridge renews the TMS session if it is close to expiring, then calls the TMS as the user.",
+      "The response is redacted of credential-like fields and truncated, the call is written to the audit log, and the result goes back with a count of what was redacted."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "A structural parser and lexical ranking instead of embeddings.",
+      "why": "Questions are about exact identifiers, and the source has a fixed generated shape. Lexical search is deterministic, fast, explainable and needs no model or vector store.",
+      "alternative": "Chunking the document and doing vector search.",
+      "tradeoff": "Synonym-style questions can miss, which I softened by indexing parameter and response text at low weight and returning hints to broaden the search."
+    },
+    {
+      "decision": "Small, chained tools instead of one large answer.",
+      "why": "Agents do better with compact answers they can follow step by step, and it keeps a huge document out of their context.",
+      "alternative": "One \"ask anything\" tool that returns large sections.",
+      "tradeoff": "More round trips per question, steered by a next-step hint on each answer."
+    },
+    {
+      "decision": "Tests that reconcile against the document's own totals.",
+      "why": "The most dangerous failure was a healthy-looking server returning nothing after a format change. Matching the header counts turns that into a red build.",
+      "alternative": "Spot checks on a few known routes.",
+      "tradeoff": "The tests need updating when the API legitimately grows, which is intended."
+    },
+    {
+      "decision": "Inherit the TMS's authorisation instead of building our own.",
+      "why": "Every call runs as the signed-in user, so the TMS enforces its own permissions and the bridge can never grant extra access.",
+      "alternative": "A service account with broad rights and a permission layer of our own.",
+      "tradeoff": "The bridge cannot offer views beyond what a user is already allowed to see, which is the correct behaviour."
+    },
+    {
+      "decision": "Validate requests against the spec, but pass responses through and redact them.",
+      "why": "Request checks catch wrong methods and missing parameters before they reach production, but the documented response shapes did not always match reality, so validating responses would reject real data.",
+      "alternative": "Strict validation in both directions.",
+      "tradeoff": "Response safety depends on the redaction pass, so redaction is recursive across the whole response."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "A document too big for any context window",
+      "body": "I indexed it by structure rather than reading it whole: find the section boundaries, parse each route block, and keep the raw text so output stays lossless. The result is a server that starts almost instantly and answers in a few hundred characters."
+    },
+    {
+      "title": "Silent failure on document drift",
+      "body": "I deliberately broke the document, renaming a heading and truncating the file, and both produced a server that looked fine and returned nothing. Reconciling against the document's own totals in the tests closed that gap for CI, and a startup check that refuses an empty index is next."
+    },
+    {
+      "title": "An SDK that changed underneath me",
+      "body": "The MCP Python SDK renamed its server class and moved its run options between major versions. I made the server work with either generation and routed every user-facing error through the SDK's own error type, so messages are not swallowed."
+    },
+    {
+      "title": "Sessions that outlive the upstream credential",
+      "body": "The TMS session expires after a fixed time and can only be renewed while it is still valid. The bridge renews it shortly before expiry, keeps working if a renewal attempt fails but the session is still valid, and ends the session cleanly if it has already lapsed, so the user is sent back to sign in."
+    }
+  ],
+  "next": [
+    "Switch writes off by default and require confirmation for destructive calls.",
+    "Add a startup check that refuses to serve an empty or partial index, and re-parse when the document changes.",
+    "Move sessions and audit records to shared storage so the bridge can run on more than one node.",
+    "Return structured content alongside markdown for programmatic clients."
+  ],
+  "lesson": "Not every AI tool needs AI inside it. The most useful thing for these agents was a fast, exact, boring index and a sign-in bridge that adds rules without adding power. When the question is about exact identifiers, determinism beats similarity, and when an assistant touches a live system, inheriting the user's own permissions is safer than any permission layer I could have written."
+}

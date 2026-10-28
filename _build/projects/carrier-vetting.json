@@ -1,0 +1,149 @@
+{
+  "slug": "carrier-vetting",
+  "theme": "freight",
+  "order": 7,
+  "title": "Carrier Vetting Agent",
+  "headline": "Vetting carriers by the rulebook, with an LLM that can't approve",
+  "dek": "A multi-tenant SaaS that turns a freight brokerage's carrier-vetting procedure into five LangGraph workflows. Rules decide, the model can only hold or lower a verdict, and people are pulled in exactly where the procedure needs them.",
+  "summary": "Carrier-vetting SOP as five LangGraph workflows: rules decide, the LLM can only lower a verdict.",
+  "client": "Client project for a US freight brokerage's carrier-vetting team",
+  "role": "Sole engineer: design, backend, agents, voice agent, console",
+  "status": "Prototype",
+  "stack": [
+    "Python",
+    "FastAPI",
+    "LangGraph",
+    "OpenAI",
+    "Cartesia",
+    "PostgreSQL",
+    "Redis",
+    "Playwright",
+    "Langfuse",
+    "React + TypeScript"
+  ],
+  "problem": [
+    "Before a freight brokerage gives a carrier a load, its vetting team checks that carrier by hand against FMCSA and several commercial carrier-safety platforms. Then it applies a dense procedure: hard blocks, exceptions, authority-age thresholds that vary by equipment type, complaint checks, and for every load a phone call in which the carrier itself must state details such as the VIN and the driver's licence. Fraud in this space (double brokering, identity theft, stolen loads) is expensive, so the stakes are high and the work is slow.",
+    "The team's procedure covered five processes: approving a new carrier, handling exceptions that need a manager, onboarding, the per-load checks, and the follow-ups after them. They wanted it automated, but any automation had to be auditable clause by clause, safe to roll out gradually, and impossible for a clever email or caller to manipulate."
+  ],
+  "approach": [
+    "The first thing I noticed was that the hard question was not how to get an LLM to vet carriers but where it must have no say. Approving a carrier is a fraud-prevention decision. It has to be deterministic, traceable to a specific clause of the procedure, versioned and regression-tested. A prompt can drift silently between model versions and can't be unit-tested. So every rule became a versioned YAML expression run by a small sandboxed evaluator, each tagged with the clause it implements and backed by a pair of test fixtures that trigger it and clear it.",
+    "The model still had real value: reading complaint text, extracting fields from certificates and licences, and drafting emails. To keep its judgement out of the approval itself, I made the final verdict the minimum of the rule verdict and the model verdict over an ordered set: disapproved, needs a person, good to go. <b>That turns \"the LLM cannot approve a carrier\" from a hope into a structural property.</b> If the model ever tries to upgrade a verdict, it is logged as a prompt defect.",
+    "Two clocks shaped the orchestration. The business wanted bounded machine time per carrier, and a manager might answer an exception hours later. I chose LangGraph because a checkpointed graph can pause at an interrupt and resume exactly where it stopped. The five-minute cap counts machine work only: every serial step checks the deadline before calling out, a cut run degrades to \"needs a person\" instead of failing, and human waits sit outside the clock.",
+    "For phone verification I looked at the naive design, an agent asking \"is the VIN 1ABC...?\", and saw that it defeats the purpose. So the voice agent receives only the questions, never the expected answers. It reports what the carrier said and the backend does the comparison. The agent has nothing to leak and can't be talked into confirming anything. The same caution drove rollout: shadow mode records verdicts and writes nothing, assist mode writes only the safest outcome, and auto mode comes only after measured agreement with the team."
+  ],
+  "built": [
+    "Parallel checks across every safety source with per-source time budgets and one retry on transport errors. An unavailable source forces human review, never a silent pass.",
+    "A rules engine over versioned YAML with a whitelisted expression language, where every hit carries the procedure clause it came from.",
+    "The hold-or-lower guard on every model verdict, with a dedicated test that proves the model can't upgrade an outcome.",
+    "Human-in-the-loop steps as graph interrupts, with a work queue and a console decision that resumes the paused run.",
+    "A phone verification agent on Cartesia that asks questions without knowing the answers, reads a recording-consent line where required, and hands answers back for field-aware comparison.",
+    "Per-tenant run modes (shadow, assist, auto), an evidence pack for every step and an audit log entry for every decision.",
+    "An offline mode for everything (fake LLM, fixture platforms, fake telephony) and an eval script that replays recorded team decisions and fails on any false approval.",
+    "A role-based React console covering the queue, decisions, exceptions, the rules editor, live run timelines and the audit trail."
+  ],
+  "architecture": {
+    "mermaid": "flowchart LR\n  B[\"Brokers, vetting team,<br/>managers\"] --> F[\"React console\"]\n  T[\"Brokerage TMS\"] -->|\"webhooks\"| A[\"API<br/>(tenant, roles, modes)\"]\n  F --> A\n  A --> Q[\"Job queue\"]\n  Q --> W[\"Graph worker<br/>LangGraph\"]\n  W --> P[\"Safety platforms<br/>(checked in parallel)\"]\n  W --> R[\"Rules engine<br/>versioned YAML\"]\n  W --> L[\"LLM<br/>structured outputs\"]\n  W --> V[\"Voice agent<br/>questions only\"]\n  V <--> C[\"Carrier dispatcher\"]\n  W --> D[(\"PostgreSQL<br/>evidence and audit\")]\n  W -->|\"mode-gated writes\"| T",
+    "caption": "Workflows run as LangGraph graphs on a worker; rules decide, the LLM advises, the voice agent only asks, and every write back to the TMS is gated by the tenant's run mode.",
+    "components": [
+      {
+        "name": "Runner",
+        "desc": "The single entry point that validates input, seeds the deadline and run mode, executes the graph with a checkpointer and turns interrupts into waiting runs."
+      },
+      {
+        "name": "Platform connectors",
+        "desc": "One contract for every safety source, returning typed fraud and safety signals; a failed source becomes missing data that forces review."
+      },
+      {
+        "name": "Rules engine",
+        "desc": "Evaluates versioned YAML rules with a restricted expression language and returns a verdict with clause references and the rule-set version."
+      },
+      {
+        "name": "LLM gateway",
+        "desc": "Schema-locked structured outputs under a fixed instruction that outside text is data, never instructions, with a fake mode when no key is set."
+      },
+      {
+        "name": "Voice agent",
+        "desc": "Calls the carrier, asks one question at a time and reports answers verbatim, without ever holding the expected values."
+      },
+      {
+        "name": "Mode-gated writers",
+        "desc": "The only path to the TMS or broker email, and they check the tenant's run mode before writing anything."
+      }
+    ]
+  },
+  "flow": {
+    "title": "How a carrier gets approved, or doesn't",
+    "steps": [
+      "The TMS or the console starts a run. The API resolves the tenant from the credential, checks the plan quota and reads the run mode.",
+      "Intake validates the required fields. If anything is missing, the broker gets an \"incomplete\" email and the run ends.",
+      "The graph fans out to every safety source in parallel, each within its own time budget, and stores the evidence.",
+      "A cross-match step reconciles identity, authority age, inspections, contact details and safety rates across sources.",
+      "The rules engine evaluates every rule. Any hard block means disapproved, any conditional rule or missing source means a person decides, otherwise the carrier is good to go.",
+      "The LLM writes reasons and a broker email draft. Its verdict passes through the minimum, so it can only make the outcome more cautious.",
+      "Depending on the run mode, the result is written back or queued for the vetting team, and an audit entry is always recorded."
+    ]
+  },
+  "decisions": [
+    {
+      "decision": "Procedure rules are code (YAML plus a sandboxed evaluator), never prompts.",
+      "why": "In a fraud and compliance workflow a verdict must be deterministic, traceable to a clause, versioned and testable. Every hit names its rule and clause, and the rule set carries a version tag.",
+      "alternative": "Encode the procedure in a long prompt and let the LLM decide.",
+      "tradeoff": "Procedure changes need YAML edits plus fixtures, not just a prompt tweak, and the expression language is deliberately small."
+    },
+    {
+      "decision": "Hold or lower: the final verdict is the minimum of the rule verdict and the model verdict.",
+      "why": "The model is good at reading and writing but must never be the thing that approves a carrier. A minimum over ordered verdicts makes that structural.",
+      "alternative": "Let the model override the rules when it is confident.",
+      "tradeoff": "The model can't rescue a false rule block, so a person reviews it instead. For fraud, that is the right direction to fail."
+    },
+    {
+      "decision": "LangGraph with a checkpointer and interrupts for human steps.",
+      "why": "Manager approvals take hours, so a run must pause durably and resume exactly where it stopped. Parallel fan-out across safety sources comes with it.",
+      "alternative": "Task-queue chains with a status column, or Temporal.",
+      "tradeoff": "The checkpointer has to be wired correctly, and wiring the durable store into every path is still on my list. Temporal offers stronger guarantees but is far heavier for a small team."
+    },
+    {
+      "decision": "The voice agent never receives the expected values.",
+      "why": "The procedure says the carrier must state each value. An agent that knows the VIN can leak it or be talked into confirming it. Questions-only makes the rule hold by construction, and the agent has no database access.",
+      "alternative": "Give the agent the expected values and ask it to compare.",
+      "tradeoff": "Two deployables sharing a contract, and answers have to come back through a callback or be read from the transcript afterwards."
+    },
+    {
+      "decision": "Shadow, assist and auto run modes per tenant and per workflow.",
+      "why": "Adoption needs trust. Shadow mode lets the team compare the agent's verdicts with their own at zero risk, assist automates only hard-block disapprovals, and auto follows measured agreement.",
+      "alternative": "All-or-nothing automation.",
+      "tradeoff": "More branches in every write step, and mode bugs are subtle."
+    },
+    {
+      "decision": "Structured outputs only, with no model-driven tool selection.",
+      "why": "Emails, complaints and web pages are untrusted text. With fixed schemas and control flow chosen by code, injected text can at worst corrupt a field, not call a tool.",
+      "alternative": "A ReAct-style agent choosing its own tools.",
+      "tradeoff": "Less flexible: every new capability is a code change."
+    }
+  ],
+  "challenges": [
+    {
+      "title": "Encoding a messy human procedure faithfully",
+      "body": "The procedure has domain traps. \"CA\" in a lane means Canada, not California, so lane checks use province codes. Only certain inspection levels count toward some checks, and authority-age thresholds vary by equipment. Each became a rule with a clause reference and a fixture pair, plus a shared glossary so engineers and the vetting team use the same words."
+    },
+    {
+      "title": "Durable human steps under a hard time cap",
+      "body": "A manager may answer hours later, but machine time must stay bounded. I separated the two clocks: the deadline lives in the graph state and covers machine work, human waits are interrupts that sit outside the budget, and a job timeout acts as the outer guard."
+    },
+    {
+      "title": "A phone check that can't be gamed",
+      "body": "The agent never holds the values it is checking. Answers are normalised per field type (phone digits, identifiers reduced to uppercase letters and numbers, parsed dates and amounts) before comparison, consent handling depends on the call's region, and the transcript plus the comparison become evidence."
+    },
+    {
+      "title": "Being honest about the gaps",
+      "body": "While writing the engineering docs I read every module against the procedure and the API contract, and logged each place the code didn't yet match the design, ranked by severity with a fix order. Today the carrier-approval and exception workflows run end to end offline, while the other three are built but not yet started through the API. Most gaps hid because each workflow's tests bypassed the shared runner."
+    }
+  ],
+  "next": [
+    "Run every workflow through the shared runner in tests and unify the state contract, so all five workflows start end to end through the API.",
+    "Wire in the durable Postgres checkpointer so waiting runs survive restarts.",
+    "Persist each workflow's domain records and connect the live platform integrations.",
+    "An agreement dashboard comparing shadow-mode verdicts with the team's decisions, which is the metric that justifies moving a tenant from shadow to auto."
+  ],
+  "lesson": "Put the LLM where its mistakes are cheap and keep it structurally away from where they are expensive. A minimum over an ordered set of verdicts did more for safety than any prompt wording could have. I would also write the end-to-end contract test on day one: most of my integration gaps hid because each piece was only ever tested alone."
+}
